@@ -223,6 +223,9 @@ function MatchScreen() {
   const [armedCard, setArmedCard] = useState(null);     // the shop bar's armed card { kind, id } (merge tile cue)
   const cc = isClientCombat(pub);
   const battleState = useStore((s) => s.match.battle, shallowEqual); // local battle runner (client-side combat)
+  // battle speed (client-local, persisted): the runner's current speed, read through the store (re-renders on change).
+  const battleSpeed = Number(battleState?.speed) > 0 ? Number(battleState.speed) : (battleRunner?.speedOf?.() || 2);
+  const setBattleSpeed = (s) => { if (battleRunner?.setSpeed) battleRunner.setSpeed(s); };
 
   const phase = pub?.phase;
   const mode = phaseMode(phase);
@@ -1225,7 +1228,7 @@ function MatchScreen() {
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
         pen=${pen} penAvail=${penAvail} onPen=${togglePen} config=${gd.config} frozenAt=${frozenAt}
         pause=${canPause || paused ? { show: canPause, paused, busy: pauseBusy, onToggle: () => togglePause(!paused) } : null}
-        live=${liveLpNow} spectator=${spectator} />
+        live=${liveLpNow} spectator=${spectator} speed=${battleSpeed} onSpeed=${setBattleSpeed} />
 
       <div class="gm__bonds">
         <${BondStrip} bonds=${stripBonds} layersDisabled=${layersDisabled} openId=${bondPop && bondPop.ownerId === strip.ownerId ? bondPop.bondId : null}

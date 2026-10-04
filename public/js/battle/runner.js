@@ -63,7 +63,7 @@
 // (test/match/runner.test.js drives it under Node).
 
 import { net as appNet } from '../net.js';
-import { store as appStore } from '../store.js';
+import { store as appStore, loadPref, savePref } from '../store.js';
 import { unitStatsEntry, fxForm } from '../../../shared/protocol.js';
 
 const TICK = 1 / 30;
@@ -194,6 +194,12 @@ export function createBattleRunner(deps) {
   let lastPool = null;
   /** solo pause: the runner clock's instant when m.public.paused turned true (null while running) */
   let pausedAt = null;
+  /**
+   * Player speed-up (× real time, client-local). The sim is deterministic, so pacing it faster reaches the exact same
+   * outcome — only the wall-clock playback changes. Persisted; starts at the server's 2×. This runs the same tick
+   * sequence at any speed, which is what keeps the result byte-identical across 1× / 2× / 3× / 4×.
+   */
+  let speedPref = Number(loadPref('battle.speed', 2)) || 2;
   /** a normal field's leak count (or a battle's bond layers) changed since the last publishState() */
   let leaksDirty = false;
   const stats = { ticks: 0, stepMs: 0, maxFrameMs: 0, catchups: 0, errors: 0, battles: 0, frames: 0 };
@@ -243,7 +249,7 @@ export function createBattleRunner(deps) {
 
   function state() {
     const e = cur;
-    if (!e) return loading ? { loading: true, battleId: loading.battleId, fieldId: loading.fieldId, kind: loading.kind, leaks: leakMap(), uniteLeft: uniteLeftMap(), bondLayers: layerMap() } : null;
+    if (!e) return loading ? { loading: true, battleId: loading.battleId, fieldId: loading.fieldId, kind: loading.kind, leaks: leakMap(), uniteLeft: uniteLeftMap(), bondLayers: layerMap(), speed: speedPref } : null;
     return {
       battleId: e.battleId, fieldId: e.fieldId, kind: e.kind, authoritative: e.authoritative, watch: e.watch,
       done: e.done, own: e.own, members: e.members.slice(), loading: !!loading, speed: e.speed, paused: pausedAt != null,
@@ -505,6 +511,29 @@ export function createBattleRunner(deps) {
     schedule();
   }
 
+  /**
+   * Player speed-up (client-local). Re-paces every live battle without touching their simulated state: the sim's tick
+   * sequence is identical at any speed, so a faster pace reaches the very same outcome — sooner. Each battle's game
+   * clock stays continuous across the switch (the elapsed game seconds so far are preserved, only the wall-clock rate
+   * that advances them changes). `speedPref` also wins on the next b.start, so the choice survives every round.
+   * @param {number} s game seconds per real second (1 / 2 / 3 / 4)
+   */
+  function setSpeed(s) {
+    const v = Number(s);
+    if (!(v > 0) || !Number.isFinite(v) || v === speedPref) return;
+    const t = clock();
+    for (const e of entries.values()) {
+      if (!e || e.speed === v) continue;
+      const elapsedGameS = ((t - e.t0) / 1000) * e.speed; // keep this battle's game time continuous
+      e.speed = v;
+      e.t0 = t - (elapsedGameS / v) * 1000;
+    }
+    speedPref = v;
+    savePref('battle.speed', v);
+    publishState();
+    schedule();
+  }
+
   /** Advance one entry to its clock (bounded); render it when it is on screen. */
   function advance(e, t, render) {
     if (e.battle.finished) { if (!e.done) finished(e); return; }
@@ -585,7 +614,7 @@ export function createBattleRunner(deps) {
 
   async function onStart(msg) {
     if (!msg || typeof msg !== 'object' || !msg.spec || typeof msg.battleId !== 'string') return;
-    const speed = Number(msg.speed) > 0 ? Number(msg.speed) : 2;
+    const speed = speedPref;
     const existing = entries.get(msg.battleId);
     if (existing) {
       const was = existing.authoritative;
@@ -798,7 +827,7 @@ export function createBattleRunner(deps) {
     _entries: entries,
     _frame: frame,
     _pump: pump,
-    onStart, onPool, onEnd, clear, ensureSim, redeliver, setPaused,
+    onStart, onPool, onEnd, clear, ensureSim, redeliver, setPaused, setSpeed, speedOf: () => speedPref,
     dispose() { clear(); for (const off of offs) { try { off?.(); } catch { /* ignore */ } } },
   };
 }
