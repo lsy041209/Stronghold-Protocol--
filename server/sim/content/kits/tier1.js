@@ -43,6 +43,71 @@ function talentAt(chess, i) {
 export const talentBb = (chess, i = 0) => talentAt(chess, i)?.bb ?? {};
 /** Range grid of named talent `i` (or null). */
 export const talentGrid = (chess, i = 0) => talentAt(chess, i)?.rangeGrid ?? null;
+
+/**
+ * 贝洛内 三技能 清算 的选取范围：官方 `x-2` —— 以技能释放位置为中心的 5×5 去掉四个角（共 21 格）。
+ * 与游戏数据里其它 `x-2` 技能逐格一致（如 chess_char_3_03_b / skchr_swire_1），不是自造形状。
+ */
+const BELLONE_S3_RANGE = Object.freeze([
+  [2, -1], [2, 0], [2, 1],
+  [1, -2], [1, -1], [1, 0], [1, 1], [1, 2],
+  [0, -2], [0, -1], [0, 0], [0, 1], [0, 2],
+  [-1, -2], [-1, -1], [-1, 0], [-1, 1], [-1, 2],
+  [-2, -1], [-2, 0], [-2, 1],
+]);
+
+/**
+ * 贝洛内 三技能 清算 的落点候选 —— 官方 "技能开启后立即选取自身周围一定范围内的一名地面目标，若其所在位置可部署，
+ * 自身会移动至目标所在位置进行攻击"。在 `x-2` 选取范围内选出常规选敌优先级最高的地面敌人，然后把该范围内的可站格
+ * 按「离该目标最近」排序返回；调用方依次尝试（目标自己站的格被占用时，自然落到它旁边的一格 —— 这才是一次【移动】）。
+ * @returns {{r: number, c: number}[]} 按优先级排序的落点（可能为空；只选取，不改动战场）
+ */
+function belloneDashTiles(battle, unit) {
+  if (!battle || !unit) return [];
+  const keys = absoluteRangeKeys(BELLONE_S3_RANGE, unit.tileR, unit.tileC, unit.dir, 0);
+  const inRange = new Set(keys);
+  const cands = (battle.enemies || []).filter((e) => e && e.alive && e.deployed && !e.isFlying && inRange.has(e.tileR * COLS + e.tileC));
+  if (!cands.length) return [];
+  const target = sortEnemyTargets(battle, unit, cands, null)[0];
+  if (!target) return [];
+  const out = [];
+  for (const k of keys) {
+    const r = Math.floor(k / COLS);
+    const c = k % COLS;
+    if (r === unit.tileR && c === unit.tileC) continue;                        // already there = not a 【移动】
+    if (!battle.grid.inRect(r, c) || !battle.grid.groundPassable(r, c)) continue;
+    if (battle.grid.isObstacle(r, c) || battle.isReservedTile(r, c)) continue;
+    out.push({ r, c, d: Math.abs(r - target.tileR) + Math.abs(c - target.tileC) });
+  }
+  out.sort((a, b) => a.d - b.d || a.r - b.r || a.c - b.c);
+  return out;
+}
+
+/**
+ * 贝洛内 三技能 清算 的一次【移动】：依次尝试 belloneDashTiles 给出的落点，第一个被引擎接受的落点就是这次位移。
+ * 起始位置只记一次（`unit.mem.belloneHome`）——技能期间可能因「重新选取目标」多次位移，但【返回】始终回到最初那格。
+ * @returns {boolean} 是否真的移动了
+ */
+function belloneDash(battle, unit) {
+  if (!battle || !unit || !unit.alive || !unit.deployed) return false;
+  for (const dest of belloneDashTiles(battle, unit)) {
+    const home = { r: unit.tileR, c: unit.tileC };
+    if (!battle.moveRedeploy(unit, dest.r, dest.c)) continue;
+    if (!unit.mem.belloneHome) unit.mem.belloneHome = home;
+    battle.fx('teleport', { x: unit.x, y: unit.y, id: unit.id });
+    return true;
+  }
+  return false;
+}
+
+/** 三技能正在运行？（`重新选取目标` / `受到致命伤害` 两条细则只在技能期间生效） */
+const belloneS3Active = (unit) => !!unit && unit.alive && unit.deployed && unit.skill && unit.skill.active && unit.skill.id === 'skchr_bellone_3';
+
+/** 敌人的等级（`NORMAL` / `ELITE` / `BOSS`）。战斗单位本身没有 rank，等级在它的数据记录 `def` 上（simdata.js）。 */
+const belloneRank = (e) => String((e && (e.def?.rank || e.rank)) || 'NORMAL').toUpperCase();
+
+/** 精英 / 领袖？（官方文案里的「精英、领袖敌人」＝ `ELITE` / `BOSS`） */
+const belloneIsElite = (e) => { const r = belloneRank(e); return r === 'ELITE' || r === 'BOSS'; };
 /** Merged blackboard of the hidden module talents (data index −1, elite only). */
 export function moduleBb(chess) {
   const o = {};
@@ -1066,6 +1131,124 @@ export default {
         }
         statBuff(battle, unit, 'talent:liskam', { resFlat: num(talentBb(chess, 1).magic_resistance) });
       } }],
+    };
+  },
+
+  // ---------------------------------------------------------------------------------------------------------------
+  // 贝洛内 · 斗士 (content pack, tier 1, 实验干员) — PRTS 数据还原，机制映射到引擎既有能力：
+  //   家族手段 (天赋1): 攻击使目标防御力降低（叠层，最多 max_stack_cnt 层）+ 目标剩余生命值越低自身伤害越高（<20% 时 +atk_scale）。
+  //   街头直觉 (天赋2): 常态 prob 物法闪避；部署后 deploy_prob，在 deploy_duration 内线性衰减回 prob。
+  //   S1 家主的余裕: 攻击回复，下次攻击造成 attack@times 段 ×attack@atk_scale 物理伤害。
+  //   S2 军师的手段: 范围 +range_extend、ASPD +attack_speed、每次攻击最多 attack@max_target 名目标 ×attack@atk_scale。
+  //     （简化：技能期间叠层上限提升与「叠满停顿」未实现 —— 位移/停顿需引擎新增，本实验只验证数值与多目标。）
+  //   S3 清算: ATK/ASPD 提升 + 攻击命中时有 attack@prob 几率造成 attack@atk_scale 的额外物理伤害。
+  //     （简化：官方「选取目标并位移」未实现，只保留增伤/攻速/概率额外伤害。）
+  /**
+   * 贝洛内 三技能 清算 的选取范围：官方 x-2 —— 以技能释放位置为中心的 5×5 去掉四个角（共 21 格）。
+   * 网格与游戏数据里其它 `x-2` 技能逐格一致（如 chess_char_3_03_b / skchr_swire_1）。
+   */
+  chess_bellone_a: (bb, chess, def) => {
+    const t0 = talentBb(chess, 0), t1 = talentBb(chess, 1);
+    const defDown = num(t0.def, -0.07);
+    const maxStacks = Math.max(1, Math.floor(num(t0.max_stack_cnt, 5)));
+    const lowHpBoost = Math.max(0, num(t0.atk_scale, 1.2) - 1);
+    const dodge = num(t1.prob, 0.4);
+    const deployDodge = num(t1.deploy_prob, 0.8);
+    const deployDur = num(t1.deploy_duration, 20);
+    const s1 = skillBbOf(chess, 'skchr_bellone_1');
+    const s2 = skillBbOf(chess, 'skchr_bellone_2');
+    const s3 = skillBbOf(chess, 'skchr_bellone_3');
+    // 二技能 军师的手段: "技能期间第一天赋使目标防御力降低的效果改为最多叠加 8 次，并且叠满后对目标造成持续的停顿效果"
+    const s2Stacks = Math.max(maxStacks, 8);
+    return {
+      skills: {
+        skchr_bellone_1: {
+          kind: 'instant',
+          attack: { atkScale: num(s1['attack@atk_scale'], 1.8), hits: Math.max(1, Math.floor(num(s1['attack@times'], 2))) },
+        },
+        skchr_bellone_2: {
+          kind: 'duration', duration: num(s2.duration, 15),
+          mods: { aspd: num(s2.attack_speed, 40) },
+          // 官方 技能范围=3-13（含自身、面朝方向 4×3 去四角，共 8 格）由数据给出：选中 S2 时 def.skill.rangeGrid 即该网格
+          targeting: { rangeGrid: def?.skill?.rangeGrid ?? null, maxTargets: Math.max(1, Math.floor(num(s2['attack@max_target'], 3))) },
+          attack: { atkScale: num(s2['attack@atk_scale'], 1.55) },
+          onStart({ unit: u }) { u.mem.belloneS2 = true; },
+          onEnd({ unit: u }) { u.mem.belloneS2 = false; },
+        },
+        skchr_bellone_3: {
+          kind: 'duration', duration: num(s3.duration, 30),
+          mods: { atkPct: num(s3.atk, 1.4), aspd: num(s3.attack_speed, 40) },
+          onHit({ battle, unit, target, dealt }) {
+            if (target && target.alive && dealt > 0 && battle.rng.chance(num(s3['attack@prob'], 0.4))) {
+              battle.dealDamage(unit, target, { amount: unit.s.atk * num(s3['attack@atk_scale'], 1.5), type: 'phys', isSkill: true, tags: ['skill'] });
+            }
+          },
+          onStart({ battle, unit }) {
+            // 官方 "技能开启后立即选取自身周围一定范围内的一名地面目标 … 移动至目标所在位置进行攻击"
+            unit.mem.belloneIdle = 0;
+            belloneDash(battle, unit);
+          },
+          // 官方 "自身持续 1 秒未进行攻击时，会立即重新选取目标" —— 用「距上次攻击的空闲时长」判定
+          onAttack({ unit }) { unit.mem.belloneIdle = 0; },
+          onTick({ battle, unit, dt }) {
+            unit.mem.belloneIdle = (unit.mem.belloneIdle || 0) + (dt || 0);
+            if (unit.mem.belloneIdle < 1) return;
+            unit.mem.belloneIdle = 0; // 无论是否移动都重新计时，避免每 tick 都尝试
+            belloneDash(battle, unit);
+          },
+          onEnd({ battle, unit }) {
+            // 官方 "技能结束后返回初始位置"：一次【移动】回原位（Battle.moveRedeploy 即官方【移动】语义）
+            const home = unit.mem.belloneHome;
+            unit.mem.belloneHome = null;
+            if (!home || !unit.alive || !unit.deployed) return;
+            if (battle.moveRedeploy(unit, home.r, home.c, { clearSp: true })) battle.fx('teleport', { x: unit.x, y: unit.y, id: unit.id });
+          },
+        },
+      },
+      talents: [{
+        install(battle, unit) {
+          // 天赋2 街头直觉: 常态物法闪避 + 部署后的临时高闪避（deploy_duration 秒后回落；线性衰减简化为「到期回落」，
+          // 引擎的 buff.mods 每 tick 重算与衰减曲线不是本实验目标）
+          if (dodge > 0) statBuff(battle, unit, 'talent:bellone_dodge', { dodgePhys: dodge, dodgeArts: dodge });
+          if (deployDodge > dodge) {
+            battle.addBuff(unit, {
+              key: 'talent:bellone_dodge_deploy', duration: deployDur, tags: ['talent'], allowDead: true,
+              mods: { dodgePhys: deployDodge - dodge, dodgeArts: deployDodge - dodge },
+            });
+          }
+          // 天赋1 家族手段: 攻击命中 → 目标降防（叠层）+ 低血增伤；二技能期间叠加上限改为 8 且叠满后停顿
+          onHitBy(battle, unit, ({ target, dmg }) => {
+            if (!dmg || !dmg.isAttack || !target || !target.alive) return;
+            if (defDown < 0) {
+              const s2On = !!unit.mem.belloneS2;
+              const cap = s2On ? s2Stacks : maxStacks;
+              const buff = battle.addBuff(target, {
+                key: `bellone:means:${unit.id}`, mods: { defPct: defDown }, refresh: 'stack', stacks: 1, maxStacks: cap,
+                duration: 10, source: unit, visible: true, tags: ['skill'],
+              });
+              if (s2On && buff && buff.stacks >= cap) battle.applyStatus(target, 'sluggish', { duration: 1, source: unit });
+            }
+            if (lowHpBoost > 0 && target.hpRatio < 0.2 && dmg.amount > 0) dmg.amount *= 1 + lowHpBoost;
+          });
+          // 三技能 清算 的两条官方细则（注册一次，靠 belloneS3Active 只在技能期间生效）
+          // ① "自身攻击的精英、领袖敌人被击倒 … 会立即重新选取目标"（精英 ELITE / 领袖 BOSS）
+          battle.on('kill', ({ victim }) => {
+            if (!victim || victim.side !== 'enemy') return;
+            if (!belloneIsElite(victim)) return;
+            if (!belloneS3Active(unit)) return;
+            unit.mem.belloneIdle = 0;
+            belloneDash(battle, unit);
+          }, { owner: unit });
+          // ② "受到致命伤害时不撤退但会结束技能，技能结束后返回初始位置" —— prevented 之后引擎会把生命补到 1
+          //    （server/sim/damage.js: fctx.prevented && target.alive → hp = max(1, hp)），技能结束再由 onEnd【返回】
+          battle.on('fatal', (c) => {
+            if (c.unit !== unit || c.prevented) return;
+            if (!belloneS3Active(unit)) return;
+            c.prevented = true;
+            unit.skill.end('fatal');
+          }, { owner: unit });
+        }
+      }],
     };
   },
 };
