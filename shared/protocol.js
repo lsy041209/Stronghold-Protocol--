@@ -67,11 +67,21 @@ export function isBattleResult(v) {
  * (known visible chess, legal skill index for the normal AND the elite status, legal module of the elite) is
  * `checkLoadout` — used by the server (lobby, match) and by the client to sanitise a stored loadout before sending.
  */
-export const LOADOUT_LIMITS = Object.freeze({ entries: 160, skillIndex: 9 });
+export const LOADOUT_LIMITS = Object.freeze({ entries: 160, skillIndex: 9, reserveSlots: 2 });
+/**
+ * 外援干员 (reserve operators): the tiers whose rows carry reserve slots, and how many slots each row has. A chess
+ * marked `isReserve: true` in the data may be equipped in one of them; the entry then carries `reserve: <tier>`, which
+ * puts it into the match pool at THAT tier's copy count (so its shop odds match the tier's ordinary chess).
+ */
+export const RESERVE_TIERS = Object.freeze([5, 6]);
+/** Whether `v` is a legal reserve-slot tier. */
+export const isReserveTier = (v) => isInt(v) && RESERVE_TIERS.includes(v);
 /** The "no module" choice of an elite (模组: 不装备). */
 export const MODULE_NONE = 'none';
-const isLoadoutEntry = (e) => isPlain(e) && Object.keys(e).length > 0 && Object.keys(e).every((k) => k === 'skill' || k === 'module')
-  && optional((v) => isInt(v, 0, LOADOUT_LIMITS.skillIndex))(e.skill) && optional(isId)(e.module);
+const isLoadoutEntry = (e) => isPlain(e) && Object.keys(e).length > 0
+  && Object.keys(e).every((k) => k === 'skill' || k === 'module' || k === 'reserve')
+  && optional((v) => isInt(v, 0, LOADOUT_LIMITS.skillIndex))(e.skill) && optional(isId)(e.module)
+  && optional(isReserveTier)(e.reserve);
 /** Structural check of `room.loadout.entries`. */
 export const isLoadoutEntries = (v) => isMap(v, LOADOUT_LIMITS.entries, isId, isLoadoutEntry);
 
@@ -133,7 +143,16 @@ export function checkLoadout(entries, getChess) {
   for (const id of Object.keys(entries)) {
     const e = entries[id];
     const base = typeof getChess === 'function' ? getChess(id) : null;
-    if (!base || base.isGolden || base.visible === false || base.isHidden || base.isDiy || (base.baseId && base.baseId !== id)) {
+    if (!base || base.isGolden || base.isDiy || (base.baseId && base.baseId !== id)) {
+      return { error: 'BAD_TARGET', detail: `unknown chess ${id}` };
+    }
+    // An 外援 pick may be a chess the ordinary roster hides (`isReserve` candidates are not in the normal pool);
+    // an ordinary pick must still be a visible slot.
+    const reserve = e.reserve === undefined ? undefined : (isReserveTier(e.reserve) ? e.reserve : null);
+    if (reserve === null) return { error: 'BAD_MSG', detail: `bad reserve tier for ${id}` };
+    if (reserve !== undefined) {
+      if (base.isReserve !== true) return { error: 'BAD_TARGET', detail: `${id} is not a reserve operator` };
+    } else if (base.visible === false || base.isHidden) {
       return { error: 'BAD_TARGET', detail: `unknown chess ${id}` };
     }
     const golden = base.goldenId ? getChess(base.goldenId) || null : null;
@@ -143,8 +162,15 @@ export function checkLoadout(entries, getChess) {
     if (e.module !== undefined && !golden) return { error: 'BAD_TARGET', detail: `${id} has no elite module` };
     const module = golden ? (e.module ?? opt.defaultModule) : null;
     if (golden && !opt.modules.includes(module)) return { error: 'BAD_TARGET', detail: `module ${e.module} not available for ${id}` };
-    if (skill === opt.defaultSkill && module === opt.defaultModule) continue;
-    out[id] = { skill, module };
+    // an entry that only equals the defaults is dropped — unless it carries an 外援 slot, which is a choice of its own
+    if (skill === opt.defaultSkill && module === opt.defaultModule && reserve === undefined) continue;
+    out[id] = reserve === undefined ? { skill, module } : { skill, module, reserve };
+  }
+  for (const t of RESERVE_TIERS) {
+    const n = Object.values(out).filter((e) => e.reserve === t).length;
+    if (n > LOADOUT_LIMITS.reserveSlots) {
+      return { error: 'BAD_TARGET', detail: `too many tier-${t} reserve operators (${n} > ${LOADOUT_LIMITS.reserveSlots})` };
+    }
   }
   return { ok: true, loadout: out };
 }

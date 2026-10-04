@@ -26,6 +26,7 @@ import { PHASE } from '../../../shared/constants.js';
 import {
   MODULE_NONE, PROF_ORDER, PROF_NAME, rosterOf, filterRoster, recordsOf, chessOptions, effectiveChoice, setChoice, resetChoice,
   changedCount, skillLabel, moduleBadge, attrRows, skillTags, serializeExport, parseImport, LOADOUT_IMPORT_MAX_BYTES,
+  RESERVE_TIERS, RESERVE_SLOTS, isReserveCandidate, reserveSlots, reserveOf, setReserve, clearReserve,
 } from '../ui/loadoutModel.js';
 import { loadoutStore, openLoadout, closeLoadout, setEntries, applyLoadoutEntries } from '../ui/loadoutSync.js';
 import { copyText } from '../ui/clipboard.js';
@@ -158,6 +159,56 @@ function RosterCard({ m, chess, golden, entries, selected, onPick }) {
       </span>` : null}
     </span>
   </button>`;
+}
+
+// ---- 外援干员 (reserve operators): the "+" slots appended to the tier-5 / tier-6 rows ----------------------------------
+
+/**
+ * One 外援 slot of a tier row, drawn in the same card frame as the roster cards so it reads as part of the row
+ * (garrison-protocol's 物资调配处 layout). Empty → a "+" that opens the picker; filled → the equipped operator,
+ * click to 卸下.
+ */
+function ReserveSlot({ tier, id, chess, m, onPick, onClear }) {
+  if (!id) {
+    return html`<button type="button" class=${cx('lo-resv', 'is-empty', `lo-card--t${tier}`)}
+        data-reserve-slot=${tier} onClick=${() => onPick(tier)} title=${`添加 ${tier} 阶外援干员`}>
+      <span class="lo-resv__frame"><span class="lo-resv__plus" aria-hidden="true">+</span></span>
+      <span class="lo-resv__cap">外援</span>
+    </button>`;
+  }
+  return html`<button type="button" class=${cx('lo-resv', 'is-filled', `lo-card--t${tier}`)}
+      data-chess=${id} data-reserve-slot=${tier} onClick=${() => onClear(id)} title=${`${chess?.name || id} · 点击卸下`}>
+    <span class="lo-card__art">
+      <${Img} src=${chess ? chessAvatarUrl(m, chess) : null}
+        fallback=${html`<span class="lo-card__glyph">${[...((chess && chess.name) || '?')][0]}</span>`} />
+    </span>
+    <${TierChip} tier=${tier} size="sm" class="lo-card__tier" />
+    <span class="lo-card__name">${chess?.name || id}</span>
+    <span class="lo-resv__off">点击卸下</span>
+  </button>`;
+}
+
+/** The picker for one 外援 slot: every reserve candidate of the data (or a note when there is none). */
+function ReservePicker({ tier, candidates, m, entries, onChoose, onClose }) {
+  if (tier == null) return null;
+  return html`<${Modal} open=${true} onClose=${onClose} title=${`选择 ${tier} 阶外援干员`} micro="RESERVE OPERATOR"
+      actions=${html`<${Button} variant="ghost" onClick=${onClose}>取消<//>`}>
+    <p class="lo-resv-hint">外援干员占 ${tier} 阶的槽位：选中后按 <b>${tier} 阶</b>进入每一局的共享卡池，出现概率与 ${tier} 阶普通干员相同，直到卸下。</p>
+    ${candidates.length ? html`<div class="lo-resv-pick" role="listbox" aria-label="外援干员候选">
+      ${candidates.map((c) => {
+        const cur = reserveOf(entries, c.chessId);
+        return html`<button type="button" key=${c.chessId} role="option" aria-selected=${cur === tier ? 'true' : 'false'}
+            class=${cx('lo-resv', 'lo-resv--pick', `lo-card--t${tier}`, cur != null && 'is-sel')} data-pick=${c.chessId}
+            onClick=${() => onChoose(c.chessId, tier)}>
+          <span class="lo-card__art">
+            <${Img} src=${chessAvatarUrl(m, c)} fallback=${html`<span class="lo-card__glyph">${[...(c.name || '?')][0]}</span>`} />
+          </span>
+          <span class="lo-card__name">${c.name}</span>
+          ${cur != null ? html`<span class="lo-resv__off">已在 ${cur} 阶</span>` : null}
+        </button>`;
+      })}
+    </div>` : html`<p class="lo-resv-none t-dim">当前数据里没有外援干员候选 —— 需要在内容包里给干员加上 <code>isReserve: true</code>。</p>`}
+  <//>`;
 }
 
 // ---- detail --------------------------------------------------------------------------------------------------------------
@@ -392,6 +443,23 @@ function LoadoutScreen({ st }) {
       .sort((a, b) => (b.isCore ? 1 : 0) - (a.isCore ? 1 : 0) || (a.bondOrder ?? 0) - (b.bondOrder ?? 0) || String(a.name).localeCompare(String(b.name), 'zh'));
   }, [ready, roster]);
   const list = filterRoster(roster, st.filters, st.entries, getChess, getBond);
+  // 干员调配 is laid out BY TIER (garrison-protocol 物资调配处): one row per tier, its cards left to right, with the
+  // tier-5 / tier-6 rows ending in the 外援 "+" slots. Reserve candidates are not roster slots (the data hides them),
+  // so they get a list of their own for the picker.
+  const byTier = new Map();
+  for (const c of list) {
+    if (!byTier.has(c.tier)) byTier.set(c.tier, []);
+    byTier.get(c.tier).push(c);
+  }
+  const reserveCandidates = useMemo(() => (data.list('chess') || []).filter(isReserveCandidate), [ready]);
+  const tierRows = [];
+  for (let t = 1; t <= 6; t++) {
+    const cards = byTier.get(t) || [];
+    const isReserveRow = RESERVE_TIERS.includes(t);
+    if (!cards.length && !isReserveRow) continue;
+    if (st.filters.tier && st.filters.tier !== t) continue;
+    tierRows.push({ tier: t, cards, isReserveRow });
+  }
   const selId = st.sel && roster.some((c) => c.chessId === st.sel) ? st.sel : list[0]?.chessId || roster[0]?.chessId || null;
   const { base, golden } = selId ? recordsOf(selId, getChess) : { base: null, golden: null };
   const nChanged = changedCount(st.entries, getChess);
@@ -400,10 +468,13 @@ function LoadoutScreen({ st }) {
   const fileRef = useRef(null);                            // hidden <input type=file> of the 导入 dialog
   const [narrowDetail, setNarrowDetail] = useState(false); // phones: the detail slides over the roster
   const [io, setIo] = useState(null);                      // 导出 / 导入 dialog: { mode, text } | null
+  const [reserveTier, setReserveTier] = useState(null);    // 外援 picker: the slot tier whose picker is open | null
 
   const pick = (id) => { loadoutStore.set({ sel: id }); setNarrowDetail(true); };
   const change = (patch) => { if (base) setEntries(setChoice(loadoutStore.get().entries, base, golden, patch)); };
   const resetOne = () => { if (base) setEntries(resetChoice(loadoutStore.get().entries, base.chessId)); };
+  const chooseReserve = (id, tier) => { setEntries(setReserve(loadoutStore.get().entries, id, tier)); setReserveTier(null); };
+  const dropReserve = (id) => { setEntries(clearReserve(loadoutStore.get().entries, id)); };
   const resetAll = async () => {
     if (!nChanged) return;
     const ok = await confirmDialog({ title: '全部恢复默认', text: `将 ${nChanged} 名干员的技能与模组恢复为默认配置？`, okText: '恢复默认', danger: true });
@@ -498,9 +569,20 @@ function LoadoutScreen({ st }) {
     ${!ready ? html`<div class="lo-loading"><${Spinner} size="sm" />正在载入干员数据（打开页面后仅载入一次）…</div>` : html`<main class=${cx('lo-body', narrowDetail && 'is-detail')}>
       <section class="lo-roster">
         <${Filters} m=${m} filters=${st.filters} bonds=${bonds} onFilters=${(filters) => loadoutStore.set({ filters })} />
-        <div class="lo-grid" role="listbox" aria-label="干员列表" ref=${gridRef}>
-          ${list.length ? list.map((c) => html`<${RosterCard} key=${c.chessId} m=${m} chess=${c} golden=${c.goldenId ? getChess(c.goldenId) : null}
-            entries=${st.entries} selected=${c.chessId === selId} onPick=${pick} />`) : html`<p class="lo-empty t-dim">没有符合条件的干员</p>`}
+        <div class="lo-tiers" role="listbox" aria-label="干员列表（按阶级）" ref=${gridRef}>
+          ${tierRows.length ? tierRows.map(({ tier, cards, isReserveRow }) => html`<div class="lo-tier" key=${tier}>
+            <div class="lo-tier__label">
+              <span class="lo-tier__roman num">${ROMAN[tier] || tier}</span>
+              <span class="lo-tier__cap">等阶</span>
+            </div>
+            <div class="lo-tier__row">
+              ${cards.map((c) => html`<${RosterCard} key=${c.chessId} m=${m} chess=${c} golden=${c.goldenId ? getChess(c.goldenId) : null}
+                entries=${st.entries} selected=${c.chessId === selId} onPick=${pick} />`)}
+              ${isReserveRow ? reserveSlots(st.entries, tier).map((rid, i) => html`<${ReserveSlot} key=${`resv-${tier}-${i}`}
+                tier=${tier} id=${rid} chess=${rid ? getChess(rid) : null} m=${m}
+                onPick=${setReserveTier} onClear=${dropReserve} />`) : null}
+            </div>
+          </div>`) : html`<p class="lo-empty t-dim">没有符合条件的干员</p>`}
         </div>
       </section>
       <div class="lo-detail-wrap">
@@ -526,6 +608,8 @@ function LoadoutScreen({ st }) {
         onInput=${(e) => setIo({ mode: io.mode, text: e.currentTarget.value })}></textarea>
       <input type="file" accept=".json,application/json,text/plain" class="lo-io__file" ref=${fileRef} onChange=${ioFile} />
     <//>` : null}
+  ${reserveTier != null ? html`<${ReservePicker} tier=${reserveTier} candidates=${reserveCandidates} m=${m}
+      entries=${st.entries} onChoose=${chooseReserve} onClose=${() => setReserveTier(null)} />` : null}
 <//>`;
 }
 

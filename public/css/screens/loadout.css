@@ -139,7 +139,8 @@
 }
 .lo-empty { grid-column: 1 / -1; padding: .4rem; text-align: center; font-size: max(.16rem, 11px); }
 
-.lo-card {
+.lo-card,
+.lo-resv {
   --tc: var(--tier-1);
   position: relative; display: flex; flex-direction: column; align-items: stretch; min-width: 0;
   padding: 0; font: inherit; color: var(--text-hi); text-align: left; cursor: pointer;
@@ -150,7 +151,8 @@
 }
 .lo-card--t1 { --tc: var(--tier-1); } .lo-card--t2 { --tc: var(--tier-2); } .lo-card--t3 { --tc: var(--tier-3); }
 .lo-card--t4 { --tc: var(--tier-4); } .lo-card--t5 { --tc: var(--tier-5); } .lo-card--t6 { --tc: var(--tier-6); }
-.lo-card:hover { border-color: var(--line-3); transform: translateY(-1px); }
+.lo-card:hover,
+.lo-resv:hover { border-color: var(--line-3); transform: translateY(-1px); }
 .lo-card.is-sel { border-color: var(--mint-400); box-shadow: inset 0 -2px 0 var(--tc), 0 0 0 1px var(--mint-500), 0 0 .16rem rgba(23, 249, 183, .35); }
 .lo-card:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 1px; }
 .lo-card__art { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: #1b201e; }
@@ -398,3 +400,50 @@
 .lo-io__text:focus { border-color: var(--mint-700); }
 .lo-io__text::placeholder { color: var(--text-lo); }
 .lo-io__file { display: none; }
+
+/* ---- by-tier roster (garrison-protocol 物资调配处 layout) ---------------------------------------------------------- */
+/* 干员调配 shows one row per tier with the tier's numeral on the left, its cards left to right — and the tier-5 /
+   tier-6 rows end in the 外援 "+" slots. */
+.lo-tiers {
+  flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: .08rem; padding: .06rem .08rem .2rem .02rem;
+  scrollbar-width: thin; scrollbar-color: var(--line-3) transparent;
+}
+.lo-tier { display: flex; align-items: stretch; gap: .06rem; }
+.lo-tier + .lo-tier { border-top: 1px solid var(--line); padding-top: .08rem; }
+.lo-tier__label {
+  flex: 0 0 auto; width: max(.34rem, 22px); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: .04rem; color: var(--text-dim);
+}
+.lo-tier__roman { font-family: var(--font-display); font-size: max(.26rem, 17px); font-weight: 700; line-height: 1; letter-spacing: .02em; }
+.lo-tier__cap { font-size: max(.1rem, 8px); letter-spacing: .1em; }
+.lo-tier__row { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: .06rem; }
+.lo-tier__row > .lo-card { flex: 0 0 max(1.16rem, 64px); width: max(1.16rem, 64px); }
+
+/* ---- 外援 slots: the "+" cards closing the tier-5 / tier-6 rows ----------------------------------------------------- */
+.lo-resv { flex: 0 0 max(1.16rem, 64px); width: max(1.16rem, 64px); }
+.lo-resv.is-empty { border-style: dashed; border-color: var(--line-2); background: rgba(255, 255, 255, .02); }
+.lo-resv.is-empty:hover { border-color: var(--mint-500); background: rgba(23, 249, 183, .06); }
+.lo-resv__frame { display: grid; place-items: center; aspect-ratio: 1; }
+.lo-resv__plus { font-size: max(.5rem, 30px); font-weight: 300; line-height: 1; color: var(--mint-400); }
+.lo-resv__cap {
+  display: grid; place-items: center; height: max(.3rem, 18px);
+  font-size: max(.12rem, 9px); letter-spacing: .12em; color: var(--text-lo); background: rgba(0, 0, 0, .4);
+}
+.lo-resv__off {
+  display: grid; place-items: center; height: max(.3rem, 18px);
+  font-size: max(.12rem, 9px); color: var(--text-lo); background: rgba(0, 0, 0, .4);
+}
+.lo-resv.is-filled:hover .lo-resv__off { color: var(--danger, #ff8a7a); }
+
+/* ---- 外援 picker dialog -------------------------------------------------------------------------------------------- */
+.lo-resv-hint { margin: 0 0 .12rem; font-size: max(.15rem, 11px); line-height: 1.75; color: var(--text-lo); }
+.lo-resv-none { padding: .3rem; text-align: center; font-size: max(.15rem, 11px); line-height: 1.7; }
+.lo-resv-none code { padding: 0 .04rem; font-size: max(.14rem, 10px); color: var(--mint-400); }
+.lo-resv-pick {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(max(1.16rem, 64px), 1fr)); gap: .08rem;
+  max-height: 58vh; overflow: auto;
+}
+.lo-resv-pick .lo-resv { width: 100%; }
+/* the picker tiles are plain choices, not roster slots: they must not answer the roster's grid sizing */
+.lo-resv--pick { flex: 0 0 auto; }

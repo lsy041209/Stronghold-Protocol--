@@ -51,12 +51,15 @@ function sample(arr, n, rng) {
 export class SharedPool {
   /**
    * @param {import('./gamedata.js').GameData} gd
-   * @param {{ banned?: Iterable<string> }} [opts]
+   * @param {{ banned?: Iterable<string>, reserves?: Iterable<{ id: string, tier: number }> }} [opts]
+   *   `reserves` = the 外援干员 the seats equipped (`{ id, tier }`, the slot's tier). They join the pool at that tier's
+   *   ordinary copy count, so their shop odds match the tier's other chess; a player only ever ROLLS the ones it
+   *   equipped (rollReserveFilter), while the copies they take are shared by the whole room.
    */
-  constructor(gd, { banned = [] } = {}) {
+  constructor(gd, { banned = [], reserves = [] } = {}) {
     this.gd = gd;
     const ban = new Set(banned);
-    /** @type {Map<string, { cap: number, left: number, tier: number }>} */
+    /** @type {Map<string, { cap: number, left: number, tier: number, reserve?: boolean }>} */
     this.entries = new Map();
     for (const id of gd.visibleChess) {
       if (ban.has(id)) continue;
@@ -64,7 +67,35 @@ export class SharedPool {
       if (cap <= 0) continue;
       this.entries.set(id, { cap, left: cap, tier: gd.tierOf(id) });
     }
+    /** @type {Map<string, number>} 外援干员 in this pool → the tier slot it was seeded at */
+    this.reserves = new Map();
+    for (const r of reserves) {
+      const id = r && r.id;
+      const tier = r && r.tier;
+      if (typeof id !== 'string' || !Number.isInteger(tier) || ban.has(id)) continue;
+      if (this.reserves.has(id)) continue; // two players equipping the same operator share ONE pool entry
+      const cap = gd.poolCopiesForTier(tier);
+      if (cap <= 0) continue;
+      this.reserves.set(id, tier);
+      if (this.entries.has(id)) continue;  // already a normal pool chess (its ordinary entry stands)
+      this.entries.set(id, { cap, left: cap, tier, reserve: true });
+    }
     this.banned = [...ban].sort();
+  }
+
+  /** Whether a pool chess is an 外援干员 (offered only to the players who equipped it). */
+  isReserve(baseId) { return this.reserves.has(baseId); }
+
+  /**
+   * Roll filter for one player's rolls: an 外援干员 is offered only to a player who equipped it (`owned` = its base
+   * ids); everything else is unaffected. Returns null when this pool has no reserves (no filter needed).
+   * @param {Iterable<string>} owned
+   * @returns {((id: string) => boolean) | null}
+   */
+  rollReserveFilter(owned) {
+    if (!this.reserves.size) return null;
+    const set = owned instanceof Set ? owned : new Set(owned || []);
+    return (id) => !this.reserves.has(id) || set.has(id);
   }
 
   /** Whether a base chess is part of this match's pool (visible, not banned). */

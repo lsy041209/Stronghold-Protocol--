@@ -252,14 +252,22 @@ export class GameData {
     };
   }
 
+  /**
+   * Copies a chess of `tier` gets in the shared pool (the tier's ordinary count, `economy.poolCopies`). Used by
+   * 外援干员: a reserve operator seeded into the pool takes the count of the SLOT's tier, so its shop odds match that
+   * tier's ordinary chess — a per-chess `poolCopiesOverrides` entry never applies to it.
+   */
+  poolCopiesForTier(tier) {
+    const pc = this.economy.poolCopies;
+    const v = pc && typeof pc === 'object' ? pc[tier] : undefined;
+    return Number.isInteger(v) && v >= 0 ? v : (DEFAULTS.poolCopies[tier] ?? 10);
+  }
+
   /** Copies of a base chess in the shared pool. */
   poolCopies(baseId) {
     const ov = this.economy.poolCopiesOverrides;
     if (ov && typeof ov === 'object' && Number.isInteger(ov[baseId]) && ov[baseId] >= 0) return ov[baseId];
-    const tier = this.tierOf(baseId);
-    const pc = this.economy.poolCopies;
-    const v = pc && typeof pc === 'object' ? pc[tier] : undefined;
-    return Number.isInteger(v) && v >= 0 ? v : (DEFAULTS.poolCopies[tier] ?? 10);
+    return this.poolCopiesForTier(this.tierOf(baseId));
   }
 
   /** Copies needed to merge (0 = never merges: golden chess). */

@@ -9,9 +9,14 @@
 // them only the default skill / module is offered. The option rules are shared with the server
 // (shared/protocol.js loadoutOptions / checkLoadout), so a sanitised loadout is always accepted.
 
-import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS } from '../../../shared/protocol.js';
+import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, RESERVE_TIERS, isReserveTier } from '../../../shared/protocol.js';
 
-export { MODULE_NONE };
+export { MODULE_NONE, RESERVE_TIERS, isReserveTier };
+
+/** 外援 slot count per tier row (5 and 6): the "+" slots `RESERVE_TIERS` rows show. */
+export const RESERVE_SLOTS = LOADOUT_LIMITS.reserveSlots;
+/** Whether a chess record may be equipped in a 外援 slot (data `isReserve`, applied by the content pack). */
+export const isReserveCandidate = (c) => !!c && c.isReserve === true && !c.isGolden && !c.isDiy;
 
 /** localStorage key (store.js loadPref/savePref prefix `sp.pref.`) and format version. */
 export const LOADOUT_PREF = 'loadout';
@@ -50,6 +55,7 @@ export function parseStored(raw) {
     const x = {};
     if (isInt(e.skill) && e.skill >= 0 && e.skill <= LOADOUT_LIMITS.skillIndex) x.skill = e.skill;
     if (typeof e.module === 'string' && /^[A-Za-z0-9_\-.:]{1,64}$/.test(e.module)) x.module = e.module;
+    if (isReserveTier(e.reserve)) x.reserve = e.reserve;
     if (Object.keys(x).length) out[id] = x;
   }
   return out;
@@ -199,10 +205,14 @@ export function setChoice(entries, base, golden, patch) {
   const skill = patch && patch.skill !== undefined && opt.skills.includes(patch.skill) ? patch.skill : cur.skill;
   const module = golden && patch && patch.module !== undefined && opt.modules.includes(patch.module) ? patch.module : cur.module;
   const out = { ...(entries || {}) };
+  const prev = out[base.chessId];
+  // an 外援 slot on this operator survives a skill / module edit
+  const keepReserve = isReserveTier(prev?.reserve) ? prev.reserve : null;
   delete out[base.chessId];
   const e = {};
   if (skill !== opt.defaultSkill && skill != null) e.skill = skill;
   if (golden && module !== opt.defaultModule && module != null) e.module = module;
+  if (keepReserve != null) e.reserve = keepReserve;
   if (Object.keys(e).length) out[base.chessId] = e;
   return out;
 }
@@ -213,6 +223,73 @@ export function resetChoice(entries, baseId) {
   const out = { ...entries };
   delete out[baseId];
   return out;
+}
+
+// ---- 外援干员 (reserve operators) -------------------------------------------------------------------------------------
+//
+// A reserve operator is equipped by giving its entry a `reserve: 5|6` slot tier (shared/protocol.js checkLoadout
+// validates it). The slot tier — not the operator's own tier — decides the pool entry, so the same operator may sit in
+// a tier-5 or a tier-6 row. `RESERVE_SLOTS` per row; the rows show empty "+" slots up to that count.
+
+/** The reserve-slot tier a chess occupies (5 / 6), or null when it is not a reserve pick. */
+export const reserveOf = (entries, baseId) => (isReserveTier(entries?.[baseId]?.reserve) ? entries[baseId].reserve : null);
+
+/**
+ * The `RESERVE_SLOTS` slots of `tier`'s row: the equipped base ids in slot order, `null` for a free slot. Order comes
+ * from the entries map (insertion order), which is stable across an edit.
+ * @returns {(string|null)[]}
+ */
+export function reserveSlots(entries, tier) {
+  const ids = [];
+  for (const [id, e] of Object.entries(entries || {})) if (e && e.reserve === tier) ids.push(id);
+  const out = ids.slice(0, RESERVE_SLOTS);
+  while (out.length < RESERVE_SLOTS) out.push(null);
+  return out;
+}
+
+/** Every chess equipped in a reserve slot, as `{ id, tier }` (the shape the server's pool seeds from). */
+export function reservePicks(entries) {
+  const out = [];
+  for (const [id, e] of Object.entries(entries || {})) if (isReserveTier(e?.reserve)) out.push({ id, tier: e.reserve });
+  return out;
+}
+
+/**
+ * Equip `baseId` in a `tier` reserve slot (fills the row; a full row drops its last slot so the count can never
+ * exceed `RESERVE_SLOTS`). Returns the new entries; the caller re-validates through `checkLoadout` anyway.
+ */
+export function setReserve(entries, baseId, tier) {
+  if (!isReserveTier(tier) || typeof baseId !== 'string' || !baseId || UNSAFE_IDS.has(baseId)) return entries;
+  const out = { ...(entries || {}) };
+  if (reserveOf(out, baseId) !== tier) {
+    const slots = reserveSlots(out, tier);
+    if (!slots.includes(baseId)) {
+      const free = slots.indexOf(null);
+      if (free === -1) {
+        const evict = slots[RESERVE_SLOTS - 1];
+        if (evict && evict !== baseId) out[evict] = omitReserve(out[evict]);
+      }
+    }
+  }
+  out[baseId] = { ...(out[baseId] || {}), reserve: tier };
+  return out;
+}
+
+/** Remove `baseId` from its reserve slot (卸下); its skill / module choices stay. */
+export function clearReserve(entries, baseId) {
+  const e = entries?.[baseId];
+  if (!e || !isReserveTier(e.reserve)) return entries;
+  const out = { ...entries };
+  const next = omitReserve(e);
+  if (Object.keys(next).length) out[baseId] = next; else delete out[baseId];
+  return out;
+}
+
+/** A copy of an entry without its reserve slot (drops the entry entirely when nothing else is left). */
+function omitReserve(e) {
+  const next = { ...(e || {}) };
+  delete next.reserve;
+  return next;
 }
 
 /**
@@ -229,11 +306,13 @@ export function sanitizeEntries(entries, getChess) {
     const one = {};
     if (isInt(e?.skill)) one.skill = e.skill;
     if (typeof e?.module === 'string') one.module = e.module;
+    if (isReserveTier(e?.reserve)) one.reserve = e.reserve;
     if (!Object.keys(one).length) continue;
     const res = checkLoadout({ [id]: one }, getChess);
     if (!res.ok) {
-      // keep the part that is still legal (e.g. the skill when a module disappeared)
-      for (const k of ['skill', 'module']) {
+      // keep the part that is still legal (e.g. the skill when a module disappeared, or the 外援 slot when the
+      // operator stopped being a candidate)
+      for (const k of ['skill', 'module', 'reserve']) {
         if (one[k] === undefined) continue;
         const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
         if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };

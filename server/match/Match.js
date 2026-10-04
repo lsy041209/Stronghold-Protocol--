@@ -332,7 +332,9 @@ export class Match {
     this.disabledBonds = bans.drawn;
     this.staticInactiveBonds = bans.staticOff;
     this.bannedChess = bans.banned;
-    this.pool = new SharedPool(this.gd, { banned: bans.banned });
+    // 外援干员 (reserve operators): every seat's equipped reserves join the shared pool at their slot tier. The seats
+    // are already built (their PlayerState ran setLoadout on the seat's checked loadout), so read them here.
+    this.pool = new SharedPool(this.gd, { banned: bans.banned, reserves: this._seatReserves() });
 
     this.phase = PHASE.LOBBY;
     this.round = 0;
@@ -429,6 +431,38 @@ export class Match {
   }
 
   /**
+   * Every seat's equipped 外援干员 as `{ id, tier }` pairs (the pool's seed input). A player who equipped none
+   * contributes nothing; the same operator equipped by several players still seeds ONE pool entry (SharedPool).
+   * @returns {{ id: string, tier: number }[]}
+   */
+  _seatReserves() {
+    const out = [];
+    for (const ps of this.players.values()) {
+      for (const [id, tier] of ps.reserves()) out.push({ id, tier });
+    }
+    return out;
+  }
+
+  /**
+   * Seed into the running pool any 外援干员 a seat equipped since the match started (an INFO_CHECK loadout edit):
+   * the operator was absent from the pool, so add it at its slot tier's copy count. Already-seeded operators and
+   * operators that are ordinary pool chess are left alone.
+   * @returns {string[]} the ids actually seeded
+   */
+  seedReserves() {
+    const added = [];
+    for (const { id, tier } of this._seatReserves()) {
+      if (this.pool.reserves.has(id) || this.pool.entries.has(id)) continue;
+      const cap = this.gd.poolCopiesForTier(tier);
+      if (cap <= 0) continue;
+      this.pool.reserves.set(id, tier);
+      this.pool.entries.set(id, { cap, left: cap, tier, reserve: true });
+      added.push(id);
+    }
+    return added;
+  }
+
+  /**
    * room.loadout during the match (DESIGN §16): only while INFO_CHECK runs (the briefing's 干员调配 entry); the lobby
    * already checked it against the data (PlayerState.setLoadout re-checks it).
    * @param {string} playerId
@@ -442,6 +476,8 @@ export class Match {
     let res = OK;
     this.guard(() => {
       if (!ps.setLoadout(loadout)) { res = fail(ERR.BAD_TARGET, 'loadout does not match the game data'); return; }
+      // an 外援 equipped in this edit must reach the pool before the shop rolls it
+      this.seedReserves();
       this.markPrivate(ps);
     });
     return res;

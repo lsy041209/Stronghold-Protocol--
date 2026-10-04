@@ -115,7 +115,12 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 /** Deep-frozen copy of a checked loadout (shared by the session, the seat and the match's PlayerState). */
 function freezeLoadout(loadout) {
   const out = {};
-  for (const [id, e] of Object.entries(loadout || {})) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
+  for (const [id, e] of Object.entries(loadout || {})) {
+    // `reserve` (外援 slot tier) rides along: the match needs it to seed that operator into the pool
+    out[id] = Object.freeze(e.reserve == null
+      ? { skill: e.skill, module: e.module ?? null }
+      : { skill: e.skill, module: e.module ?? null, reserve: e.reserve });
+  }
   return Object.freeze(out);
 }
 

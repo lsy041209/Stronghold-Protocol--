@@ -217,6 +217,7 @@ export class PlayerState {
         const x = {};
         if (Number.isInteger(e.skill)) x.skill = e.skill;
         if (typeof e.module === 'string') x.module = e.module;
+        if (Number.isInteger(e.reserve)) x.reserve = e.reserve;
         if (Object.keys(x).length) entries[id] = x;
       }
     }
@@ -226,9 +227,25 @@ export class PlayerState {
       return false;
     }
     const out = {};
-    for (const [id, e] of Object.entries(res.loadout)) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
+    for (const [id, e] of Object.entries(res.loadout)) {
+      out[id] = Object.freeze(e.reserve == null
+        ? { skill: e.skill, module: e.module ?? null }
+        : { skill: e.skill, module: e.module ?? null, reserve: e.reserve });
+    }
     this.loadout = Object.freeze(out);
     return true;
+  }
+
+  /**
+   * The 外援干员 (reserve operators) this player equipped: base id → the tier slot it occupies. Empty for a player who
+   * equipped none. The shop rolls only these for this player, while their copies still come out of the shared pool
+   * (Match.seedReserves), so two players equipping the same operator compete for the same copies.
+   * @returns {Map<string, number>}
+   */
+  reserves() {
+    const out = new Map();
+    for (const [id, e] of Object.entries(this.loadout || {})) if (Number.isInteger(e.reserve)) out.set(id, e.reserve);
+    return out;
   }
 
   /** The skill index / module a chess record fights with under this player's loadout (DESIGN §16). */
@@ -660,7 +677,7 @@ export class PlayerState {
       const fresh = (id) => !list.includes(id);
       for (let i = 0; i < ro.count; i++) {
         let id = null;
-        for (let tt = t; tt >= 1 && !id; tt--) id = this.m.pool.roll(this.m.rngShop, { tier: tt, filter: fresh });
+        for (let tt = t; tt >= 1 && !id; tt--) id = this.rollChess(this.m.rngShop, { tier: tt, filter: fresh });
         if (id) list.push(id);
       }
     }
@@ -835,8 +852,24 @@ export class PlayerState {
     return Number.isFinite(p) ? Math.max(0, Math.round(p)) : slot.basePrice;
   }
 
+  /**
+   * A shared-pool chess roll made FOR THIS PLAYER: the caller's `filter` (if any) is combined with the 外援干员 rule —
+   * a reserve operator only ever comes up for a player who equipped it, while its copies still leave the shared pool
+   * (two players equipping the same operator compete for the same copies). Use this for every player-facing roll
+   * (shop, reward offer, cards); a roll not tied to a player (a global event) has no reserve rule to apply.
+   * @param {Function} rng
+   * @param {{ maxTier?: number, tier?: number|null, filter?: ((id: string, e: object) => boolean)|null }} [opts]
+   * @returns {string|null}
+   */
+  rollChess(rng, opts = {}) {
+    const rf = this.m.pool.rollReserveFilter(this.m.pool.reserves.size ? new Set(this.reserves().keys()) : null);
+    const f = opts.filter;
+    const filter = rf && f ? (id, e) => rf(id) && f(id, e) : (rf || f || null);
+    return this.m.pool.roll(rng, { ...opts, filter });
+  }
+
   _rollChessSlot() {
-    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level });
+    const id = this.rollChess(this.m.rngShop, { maxTier: this.shop.level });
     return id ? { kind: 'chess', id, basePrice: this.gd.chessPrice(id), frozen: false, sold: false } : null;
   }
 
