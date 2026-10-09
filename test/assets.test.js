@@ -2,7 +2,7 @@
 // data/assets.json. The pure helpers (animation-role resolver, atlas
 // normalizer, PNG/WOFF2/audio helpers, plan id sets) are always tested; the
 // on-disk checks run only when public/assets exists (it is git-ignored and
-// produced by `npm run assets`); the optional local-client enemy models
+// produced by `npm run assets`); the optional local-client enemy and token models
 // (spineLocal, tools/local-extract) only when data/local-assets.json lists them.
 
 import { test, describe } from 'node:test';
@@ -14,7 +14,7 @@ import zlib from 'node:zlib';
 
 import { resolveRoles, roleAnimationNames } from '../tools/assets/anim-roles.mjs';
 import { normalizeAtlas, atlasInfo, parseAtlas } from '../tools/assets/atlas.mjs';
-import { pngSize, isCompletePng, isMp3, validate } from '../tools/assets/formats.mjs';
+import { pngSize, imageSize, isCompletePng, isMp3, validate } from '../tools/assets/formats.mjs';
 import { encodeWoff2, decodeWoff2Tables, readSfnt, uintBase128 } from '../tools/assets/woff2.mjs';
 import { assetToPath, pickUnitSfx, indexAudio } from '../tools/assets/audio.mjs';
 import { mirrorUrl, safeName, encodePath } from '../tools/assets/sources.mjs';
@@ -75,6 +75,92 @@ describe('animation-role resolver (research 07 §5.4)', () => {
   test('SkillN without underscore (char_2015_dusk)', () => {
     const r = resolveRoles(['Attack', 'Die', 'Idle', 'Skill2_Begin', 'Skill2_End', 'Skill2_Loop', 'Skill3_Attack', 'Start'], { skillIndices: [1] });
     assert.deepEqual(r.skill, { begin: 'Skill2_Begin', loop: 'Skill2_Loop', end: 'Skill2_End', index: 1, idle: null });
+  });
+
+  // PR #275 (@xcdoge): an enemy's manifest only ever had skill index 0 (plan.mjs passes [0]), so a multi-skill boss could
+  // show one cast clip — 盐风主教昆图斯 has Skill_01..04. With `numberedSkills` (spine.mjs: enemy models) every numbered
+  // skill clip is resolved after the caller's indices, whose first stays the primary.
+  test('numbered skill clips of an enemy are all resolved (a multi-skill boss), the primary stays the caller’s first', () => {
+    const names = ['Attack', 'Default', 'Die', 'Idle', 'Skill_01', 'Skill_02', 'Skill_03', 'Skill_04'];
+    assert.equal(resolveRoles(names, { skillIndices: [0] }).skills, undefined, 'without the option: index 0 only (operators)');
+    const r = resolveRoles(names, { skillIndices: [0], numberedSkills: true });
+    assert.deepEqual(Object.keys(r.skills).sort(), ['0', '1', '2', '3']);
+    assert.equal(r.skills['1'].loop, 'Skill_02');
+    assert.equal(r.skills['3'].loop, 'Skill_04');
+    assert.equal(r.skill.loop, 'Skill_01', 'the first index stays the primary clip');
+    const first = resolveRoles(names, { skillIndices: [2], numberedSkills: true });
+    assert.equal(first.skill.index, 2, 'a caller-declared primary still wins');
+    assert.equal(first.skill.loop, 'Skill_03');
+    // 自在: Skill_01 / Skill_01_02 are one slot, Skill_02_Begin / Loop / End the next
+    const xi = resolveRoles(['Attack_01', 'Die', 'Idle', 'Skill_01', 'Skill_01_02', 'Skill_02_Begin', 'Skill_02_End', 'Skill_02_Loop'], { numberedSkills: true });
+    assert.deepEqual(xi.skills['1'], { begin: 'Skill_02_Begin', loop: 'Skill_02_Loop', end: 'Skill_02_End', index: 1, idle: null });
+    // phase-style skill clips (no index in the name) stay a single primary skill
+    assert.equal(resolveRoles(['Attack', 'Die', 'Idle', 'Skill_Begin', 'Skill_Loop', 'Skill_End'], { numberedSkills: true }).skills, undefined);
+  });
+
+  // PR #275: the stun family is spelled Stun / Stun_End, Stun_1 / Stun_2 (巨大的丑东西: first form, second form) and
+  // Dizzy_Begin / Dizzy_Loop / Dizzy_End (斩胄之剑 / 破胄之锤); without a role a stunned enemy freezes its clip.
+  test('stun clips: numbered Stun_N and the Dizzy_* family are recognised', () => {
+    const mc = resolveRoles(['Attack_1', 'Die', 'Idle_1', 'Idle_2', 'Move_1', 'Move_2', 'Stun_1', 'Stun_2'], {});
+    assert.deepEqual(mc.stun, { begin: null, loop: 'Stun_1', end: null });
+    const dz = resolveRoles(['Attack', 'Die', 'Idle_B', 'Move', 'Dizzy_Begin', 'Dizzy_Loop', 'Dizzy_End', 'Dizzy_Die'], {});
+    assert.deepEqual(dz.stun, { begin: 'Dizzy_Begin', loop: 'Dizzy_Loop', end: 'Dizzy_End' });
+    assert.deepEqual(resolveRoles(['Attack', 'Die', 'Idle', 'Stun', 'Stun_End'], {}).stun, { begin: null, loop: 'Stun', end: 'Stun_End' });
+    assert.equal(resolveRoles(['Attack', 'Die', 'Idle', 'Move'], {}).stun, null);
+  });
+
+  // PR #275: a model's own Run cycle is a role of its own (猎狗pro: Move_Loop 0.80 s, Run_Loop 0.53 s); the move choice
+  // is unchanged, the renderer switches to it for a fast enemy.
+  test('the model’s own Run cycle becomes a separate run role', () => {
+    const names = ['Attack', 'Default', 'Die', 'Idle', 'Move_Begin', 'Move_End', 'Move_Loop', 'Run_Begin', 'Run_End', 'Run_Loop'];
+    const r = resolveRoles(names, {});
+    assert.deepEqual(r.move, { begin: 'Move_Begin', loop: 'Move_Loop', end: 'Move_End' }, 'the move role is unchanged');
+    assert.deepEqual(r.run, { begin: 'Run_Begin', loop: 'Run_Loop', end: 'Run_End' });
+    assert.ok(roleAnimationNames(r).includes('Run_Loop'), 'the manifest writer validates the Run clips');
+    assert.equal(resolveRoles(['Attack', 'Die', 'Idle', 'Move'], {}).run, undefined, 'no Run cycle, no role');
+  });
+
+  // The manifest (tools/fetch-assets.mjs --offline with this resolver): every model whose skeleton has a stun / Run clip
+  // has the role, and every enemy with numbered skill clips has one clip per slot.
+  describe('data/assets.json roles (PR #275)', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../data/assets.json', import.meta.url), 'utf8'));
+    const models = [];
+    for (const [id, e] of Object.entries(manifest.enemies || {})) if (e.spine) models.push([`enemies.${id}`, e.spine]);
+    for (const [id, e] of Object.entries(manifest.tokens || {})) if (e.spine) models.push([`tokens.${id}`, e.spine]);
+    for (const [id, e] of Object.entries(manifest.chars || {})) if (e.spine?.front) models.push([`chars.${id}`, e.spine.front]);
+    const walk = (re, ok) => {
+      const bad = [];
+      let seen = 0;
+      for (const [id, sp] of models) {
+        if (!sp.animations || !Object.keys(sp.animations).some((n) => re.test(n))) continue;
+        seen++;
+        if (!ok(sp.anims || {}, id)) bad.push(id);
+      }
+      return { bad, seen };
+    };
+    test('every model with a stun clip has a stun role', () => {
+      const { bad, seen } = walk(/^(stun|dizzy)/i, (a) => !!a.stun);
+      assert.ok(seen >= 6, `models with a stun clip (${seen})`);
+      assert.deepEqual(bad, []);
+    });
+    test('every model with a Run clip has a run role', () => {
+      const { bad, seen } = walk(/^run/i, (a) => !!a.run);
+      assert.ok(seen >= 3, `models with a Run clip (${seen})`);
+      assert.deepEqual(bad, []);
+    });
+    test('every enemy with numbered skill clips has a clip per slot (盐风主教昆图斯: Skill_01..04)', () => {
+      const { bad, seen } = walk(/^Skill_?0*[1-9](?:$|_)/i, (a, id) => !id.startsWith('enemies.') || !!a.skills);
+      assert.ok(seen >= 10, `models with numbered skill clips (${seen})`);
+      assert.deepEqual(bad, []);
+      const q = manifest.enemies.enemy_1521_dslily.spine.anims;
+      assert.deepEqual(Object.values(q.skills).map((c) => c.loop), ['Skill_01', 'Skill_02', 'Skill_03', 'Skill_04']);
+      assert.equal(q.skill.loop, 'Skill_01', 'the primary clip is unchanged');
+      // operators keep their pool's indices (宴's fix, PREFAB_SPINE_ROLES / DESIGN §25.22.9, stays as it was)
+      const utage = manifest.chars.char_337_utage.spine.front.anims;
+      assert.deepEqual(Object.keys(utage.skills).sort(), ['0', '1']);
+      assert.equal(utage.skills['0'].loop, 'Skill_Loop');
+      assert.equal(utage.skill.loop, 'Attack');
+    });
   });
 
   test('pure supporter without Attack (char_4134_cetsyr)', () => {
@@ -362,6 +448,21 @@ describe('audio banks and plan id sets', () => {
     assert.equal(ok.value.p, '/assets/package.json');
     assert.equal(ok.fallbacks.length, 1);
   });
+
+  test('an array whose lines are all missing is dropped, with the entry it empties (a voice slot never downloaded)', () => {
+    const line = (rel) => ({ alts: [{ rel, urls: ['u'] }] });
+    const tpl = {
+      voice: {
+        a: { select: [line('nope/1.mp3'), line('nope/2.mp3')], place: [line('nope/3.mp3')] },
+        b: { select: [line('nope/4.mp3'), line('package.json')] },
+      },
+      empty: [],
+    };
+    const r = resolveTemplate(tpl, { root: ROOT, spine: new Map() });
+    assert.deepEqual(r.value.voice, { b: { select: ['/assets/package.json'] } }, 'operator a has no line on disk: no entry at all');
+    assert.deepEqual(r.value.empty, [], 'an array that was empty in the template stays');
+    assert.deepEqual(r.misses.sort(), ['voice.a.place[0]', 'voice.a.select[0]', 'voice.a.select[1]', 'voice.b.select[0]']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -522,8 +623,24 @@ describe('emotes and 玩法说明 pages from the public mirror (GitHub issue #42
   test('the committed data/assets.json lists all 55, so setup on an install made before them downloads them', () => {
     // tools/setup.mjs runs fetch-assets when data/assets.json lists a file that is not on disk (checkAssets)
     const m = readJson('data/assets.json');
-    for (const e of EMOTE_CATALOG) assert.equal(m.ui[`emoticon/${e.dir}/${e.picId}`], `/assets/ui/emoticon/${e.dir}/${e.picId}.png`, e.id);
-    for (const k of GUIDE_PAGES) assert.equal(m.ui[`guide/${k}`], `/assets/ui/guide/${k}.png`, k);
+    // ⚠️ W-1（2026-10-07）：断言的是「清单里的路径 == 盘上真实存在的那个文件」，**不是硬编码 `.png`**。
+    //   本工作区的 public/assets 整体转成了 WebP（清单由 manifest.mjs 的 actualRel 解析出 `.webp`），
+    //   而上游这条测试写死了 `.png` ⇒ 在转换过的树上必红，而且红得与功能无关。
+    //   判据改成「basename 前缀相同 + 文件真在盘」—— 守住的是「清单不撒谎」这件真事。
+    // 🔴 W-1 二修（2026-10-08）：上一版把期望前缀写成 `/assets/${key}.`，**漏了 `ui/` 一段**
+    //   （清单里是 `/assets/ui/emoticon/...`，我写成 `/assets/emoticon/...`）⇒ 这条红是**我自己的断言写错**，
+    //   不是清单不一致、也不是 C 推测的「改前就有」。C 在派工单 §2 B-3 把它归给 B，是归错了——已报备。
+    //   ⇒ 教训同 AGENTS §三：**判据写错时，报红的是判据自己**。所以前缀要从真实数据反推，不能手拼。
+    const onDisk = (rel) => existsSync(join(ASSETS, rel.replace(/^\/assets\//, '')));
+    const sameStem = (declared, key) => {
+      // 清单里 UI 资源的路径段是 `ui/<key>`；这里的 key 是 plan 的键（如 `emoticon/basic/pic_happy_battle`）
+      const stem = key.slice(key.lastIndexOf('/') + 1);
+      assert.ok(declared.startsWith(`/assets/ui/${key}.`), `${key}: 清单路径前缀不对（${declared}）`);
+      assert.ok(declared.includes(stem), `${key}: 清单路径丢了主干名（${declared}）`);
+      assert.ok(onDisk(declared), `${key}: 清单声明 ${declared} 但盘上没有 —— setup 会去重下一次（这才是这条要守的）`);
+    };
+    for (const e of EMOTE_CATALOG) sameStem(m.ui[`emoticon/${e.dir}/${e.picId}`], `emoticon/${e.dir}/${e.picId}`);
+    for (const k of GUIDE_PAGES) sameStem(m.ui[`guide/${k}`], `guide/${k}`);
     assert.equal(m.stats.ui, Object.keys(m.ui).length);
     assert.ok(!JSON.stringify(m).includes('/assets/local/'), 'never a local-client path');
   });
@@ -646,10 +763,10 @@ describe('generated manifest data/assets.json', () => {
     for (const e of Object.values(manifest.enemies)) if (e.spine) models.set(e.spine.skel, e.spine);
     for (const t of Object.values(manifest.tokens)) if (t.spine) models.set(t.spine.skel, t.spine);
     assert.ok(models.size > 400);
-    // the official enemy models of the local client, as the client resolves them (DESIGN §13: only when listed)
+    // the official enemy and token models of the local client, as the client resolves them (DESIGN §13: only when listed)
     const localPath = join(ROOT, 'data', 'local-assets.json');
     const local = existsSync(localPath) ? JSON.parse(readFileSync(localPath, 'utf8')) : null;
-    for (const id of Object.keys(manifest.enemies)) {
+    for (const id of [...Object.keys(manifest.enemies), ...Object.keys(manifest.tokens)]) {
       const s = local ? spineEntry(manifest, id, { local }) : null;
       if (s?.local && [s.skel, s.atlas, ...s.textures].every((u) => existsSync(join(PUBLIC, u)))) models.set(s.skel, s);
     }
@@ -659,7 +776,7 @@ describe('generated manifest data/assets.json', () => {
       assert.equal(s.skel.replace(/\.skel$/, '.atlas'), s.atlas, s.skel);
       let done = false;
       const atlas = new base.TextureAtlas(readFileSync(join(PUBLIC, s.atlas), 'utf8'), (page, cb) => {
-        const size = pngSize(readFileSync(join(PUBLIC, dir, page)));
+        const size = imageSize(readFileSync(join(PUBLIC, dir, page)));
         assert.ok(size, `${s.atlas}: page ${page}`);
         const bt = new core.BaseTexture(null, { width: size.width, height: size.height });
         bt.setRealSize(size.width, size.height);

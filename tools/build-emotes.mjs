@@ -13,7 +13,7 @@
 //   { version, source, chatCD, chatTime,
 //     themes: [{ themeId, dir, sortId, isBasic, name, emotes: [id…] }],             pages, enabled-list order
 //     emotes: [{ id, themeId, sortId, picId, art, label }] }                          36, page order then sortId
-// `art` = /assets/local/emoticon/<dir>/<picId>.png (tools/local-extract; key by picId — fooldoctor_03…06 use pics
+// `art` = /assets/local/emoticon/<dir>/<picId>.webp (tools/local-extract; key by picId — fooldoctor_03…06 use pics
 // 04/05/06/08); the mirror copy that tools/fetch-assets.mjs downloads is data/assets.json ui['emoticon/<dir>/<picId>'].
 // Official emotes carry no text (desc is null); `label` is ours and only ever an aria-label.
 // shared/constants.js EMOTE_THEMES mirrors this file (test/ui/emotes.test.js keeps them identical).
@@ -92,7 +92,7 @@ export function buildEmotes({ display, activity, items }) {
     recs.forEach((e, i) => {
       if (e.desc) warnings.push(`${e.id}: has a desc (${e.desc}); the UI still shows the picture only`);
       emotes.push({
-        id: e.id, themeId, sortId: e.sortId, picId: e.picId, art: `/assets/local/emoticon/${dir}/${e.picId}.png`,
+        id: e.id, themeId, sortId: e.sortId, picId: e.picId, art: `/assets/local/emoticon/${dir}/${e.picId}.webp`,
         label: LABELS[e.id] || `${shortName(name, themeId)} ${i + 1}`,
       });
     });

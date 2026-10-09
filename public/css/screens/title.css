@@ -192,6 +192,8 @@
   animation: rise-in 600ms 140ms var(--ease-out) backwards;
 }
 .title-cn__colon { color: #f4f6f5; }
+/* a title in an alphabetic script (English …; screens/title.js): the display face, smaller so "Stronghold Protocol: Alliance" fits one line */
+.title-cn--latin { font-family: var(--font-display); font-size: .6rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .title-cn em { font-style: normal; color: var(--mint-500); text-shadow: 0 0 .26rem rgba(23, 249, 183, .45); }
 .title-tag {
   margin-top: .12rem;
@@ -241,6 +243,12 @@
 .title-invite .icon { width: .2rem; height: .2rem; }
 .title-invite b { font-size: .2rem; letter-spacing: .2em; color: #ffd08a; }
 .title-conn { display: flex; align-items: center; justify-content: center; gap: .1rem; min-height: .32rem; font-size: .14rem; color: var(--text-lo); }
+/* language menu (中文 | English | …, ui/lang.js) in the top-right corner; more than four languages make it a list */
+.title-lang { display: inline-flex; margin-bottom: .1rem; }
+.title-lang button { min-width: .74rem; height: .3rem; font-size: .14rem; cursor: pointer; }
+.lang-select select { height: .38rem; min-width: 1.6rem; padding: 0 .12rem; background: #0a0d0c; border: 0; color: var(--text-hi); font-size: .16rem; cursor: pointer; }
+.title-lang.lang-select select { height: .3rem; font-size: .14rem; }
+html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
 .title-conn .ping { height: .26rem; font-size: .15rem; }
 
 .title-foot {
@@ -254,4 +262,199 @@
   align-items: flex-end;
   font-size: .13rem;
   color: var(--text-dim);
+}
+/* a development build (shared/constants.js DEV_BUILD): an unmissable tag in the footer */
+.title-dev {
+  padding: .03rem .1rem;
+  border: 1px solid #ff9f43;
+  border-radius: .04rem;
+  color: #ffb066;
+  background: rgba(255, 159, 67, .14);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* ==== 我方追加（标题页侧栏：更新公告 / 特别鸣谢）=============================================================
+   来源：0.1.4.1 冷备 public/css/screens/title.css 的" 我方独有行\（150
+/* The connection line is a flex row inside a centred column: without flex:none the status text can be the item that
+   shrinks, and "已连接服务器" then wraps to two lines once the server-status pill (在线/房间) sits next to it.
+   The word is one unit — never break it, and let the row keep its natural width. */
+.title-conn > span:not(.ping):not(.serverpill), .title-conn .serverpill, .title-conn .ping { flex: none; }
+
+/* ---- 右侧两个可点开的面板：更新公告 / 特别鸣谢 -----------------------------------------------
+   宽屏：贴在右侧中部（填的正是这块空白）。窄屏 / 矮屏：收成一行、居中贴在页脚上方。
+   ⚠️ **`.title-side` 上绝对不能有 `transform`** —— theme.css:270 已经为这件事写过注释：带 transform 的元素会成为
+   `position: fixed` 后代的**包含块**，浮层就会被困在侧栏那个小盒子里而不是铺满视口。居中所需要的
+   `translate` 因此只挂在**只包按钮的内层** `.title-side__btns` 上，浮层是它的兄弟节点。 */
+.title-side { position: absolute; z-index: 3; right: .44rem; top: 46%; }
+.title-side__btns { display: flex; flex-direction: column; gap: .1rem; transform: translateY(-50%); }
+.title-side__btn {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: 'icon label' 'icon micro';
+  align-items: center;
+  gap: 0 .1rem;
+  padding: .09rem .14rem .09rem .1rem;
+  min-width: 1.72rem;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text-lo);
+  background: linear-gradient(180deg, rgba(20, 25, 23, .74), rgba(10, 13, 12, .82));
+  border: 1px solid var(--line-2);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  transition: border-color 140ms var(--ease-out), color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+}
+.title-side__btn .icon { grid-area: icon; width: .26rem; height: .26rem; color: var(--mint-500); }
+.title-side__label { grid-area: label; font-size: .17rem; letter-spacing: .06em; color: #dbe3df; }
+.title-side__micro { grid-area: micro; font-family: var(--font-display); font-size: .09rem; letter-spacing: .22em; color: var(--text-dim); }
+.title-side__btn:hover, .title-side__btn:focus-visible {
+  border-color: var(--mint-700);
+  color: var(--mint-500);
+  box-shadow: 0 0 .24rem rgba(23, 249, 183, .16);
+}
+.title-side__btn.is-on { border-color: var(--mint-500); box-shadow: 0 0 .24rem rgba(23, 249, 183, .22); }
+/* 触屏没有 hover：给一个够大的触达面（与 .sp-coarse 的 30px 线同标准）。 */
+@media (pointer: coarse) { .title-side__btn { min-height: max(.44rem, 44px); } }
+/* 🔴 2026-10-09（C，B 的通用遮挡审计 #1 引出的真问题）：
+   `devices.css:63-70` 给触屏上**每个可点元素**加了一个**居中的 44px 命中区**
+   （`.sp-coarse :is(… .fsbtn …)::before { width: max(100%, var(--tap-min)); height: max(100%, --tap-min) }`，
+   `--tap-min: 44px` 见 `devices.css:19`）。
+   而 `.title-conn` 里这几个小按钮（齿轮 / 全屏 / 玩法说明）**彼此只隔 `.1rem`（≈3px）**，
+   按钮本身又只有 ~14px 宽 ⇒ **两个中心只隔约 21px < 44px** ⇒ 两个命中区必然重叠，
+   谁在 DOM 里靠后谁赢 ⇒ **实测：横屏手机点【设置齿轮】命中的是【全屏按钮】**（844×390 与 892×412 都复现）。
+   判据：`.workbuddy/tools/c-probe-mobile-title-hit.mjs`（真机视口 + `elementFromPoint` 命中测试）。
+   ✅ 修法：触屏下把这一排的间距放大到 **≥ 一个命中区宽度**（44px）⇒ 结构上不可能再重叠。
+   ⚠️ **必须限定在【横屏】**：竖屏 390px 只有 172px 可用，给到 44px 间距会把整排挤出视口
+      （C 实测：齿轮被推到 x=407 > 视口宽 390）⇒ 那是**把一个好视口改坏**。
+      横屏（手机横过来）恰好有 500+ px ⇒ 放得下。 */
+@media (pointer: coarse) and (orientation: landscape) { .title-conn { gap: max(3rem, 44px); } }
+
+/* 浮层。`position: fixed` + 自身可滚 ⇒ 内容再长也不推页面、也不会溢出。 */
+.tpanel {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .26rem;
+  background: rgba(4, 7, 6, .74);
+  animation: fade-in 160ms ease backwards;
+}
+.tpanel__box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(9.4rem, 100%);
+  max-height: 100%;
+  background: linear-gradient(180deg, rgba(22, 28, 26, .97), rgba(9, 12, 11, .98));
+  border: 1px solid var(--line-2);
+  box-shadow: 0 .3rem .8rem rgba(0, 0, 0, .6);
+}
+.tpanel__box::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--mint-500), transparent 60%);
+}
+.tpanel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .2rem;
+  padding: .2rem .24rem .16rem;
+  border-bottom: 1px solid var(--line-2);
+}
+.tpanel__title { margin: .04rem 0 0; font-size: .3rem; font-weight: 800; letter-spacing: .08em; color: #f2f5f3; }
+.tpanel__close {
+  flex: none;
+  width: max(.36rem, 36px);
+  height: max(.36rem, 36px);
+  display: grid;
+  place-items: center;
+  color: var(--text-lo);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+}
+.tpanel__close:hover { color: var(--mint-500); border-color: var(--mint-700); }
+.tpanel__close .icon { width: .24rem; height: .24rem; }
+.tpanel__body {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; /* 旧 WebView 上让惯性滚动生效（W-4） */
+  padding: .18rem .24rem .24rem;
+  font-size: .17rem;
+  line-height: 1.75;
+  color: var(--text-lo);
+}
+.tpanel__empty { color: var(--text-dim); }
+
+/* -- 更新公告 -- */
+.tpanel__ver + .tpanel__ver { margin-top: .26rem; padding-top: .2rem; border-top: 1px dashed var(--line-2); }
+.tpanel__verhead { display: flex; align-items: baseline; gap: .12rem; flex-wrap: wrap; }
+.tpanel__vertag { font-family: var(--font-display); font-size: .24rem; letter-spacing: .08em; color: var(--mint-500); }
+.tpanel__verdate { font-size: .14rem; color: var(--text-dim); }
+.tpanel__sec { margin-top: .12rem; }
+.tpanel__secname { margin: 0 0 .04rem; font-size: .18rem; font-weight: 700; color: #dbe3df; }
+.tpanel__items { margin: 0; padding-left: .22rem; }
+.tpanel__item { list-style: '· '; }
+.tpanel__item + .tpanel__item { margin-top: .04rem; }
+
+/* -- 特别鸣谢 -- */
+.tpanel__group + .tpanel__group { margin-top: .26rem; padding-top: .2rem; border-top: 1px dashed var(--line-2); }
+.tpanel__list { margin: .12rem 0 0; padding: 0; list-style: none; }
+.tpanel__credit + .tpanel__credit { margin-top: .14rem; padding-top: .12rem; border-top: 1px solid rgba(255, 255, 255, .06); }
+.tpanel__credithead { display: flex; align-items: baseline; gap: .1rem; flex-wrap: wrap; }
+.tpanel__creditname { font-size: .2rem; color: #eef2f0; }
+.tpanel__role, .tpanel__bili, .tpanel__down { font-size: .13rem; color: var(--text-dim); }
+.tpanel__role { color: var(--amber); }
+.tpanel__down { color: var(--amber); }
+.tpanel__credit.is-down .tpanel__creditname { color: var(--text-lo); }
+.tpanel__links { display: flex; flex-wrap: wrap; gap: .04rem .14rem; margin-top: .04rem; }
+.tpanel__link { display: inline-flex; align-items: center; gap: .04rem; font-size: .16rem; color: var(--mint-500); text-decoration: none; }
+.tpanel__link:hover, .tpanel__link:focus-visible { text-decoration: underline; }
+.tpanel__link .icon { flex: none; width: .18rem; height: .18rem; }
+/* 长 URL 必须能断行，否则它是浮层里唯一能横向溢出的东西。 */
+.tpanel__linktext { overflow-wrap: anywhere; word-break: break-word; }
+.tpanel__creditnote, .tpanel__line { margin: .04rem 0 0; font-size: .14rem; color: var(--text-dim); }
+.tpanel__line { margin-top: .16rem; font-style: italic; }
+
+/* ---- 窄屏 / 矮屏：侧栏并入居中列（常规流），浮层铺满可滚 ------------------------------------------ */
+@media (max-width: 900px), (max-height: 560px) {
+  /* 🔴 2026-10-09（缺陷单 #1）：**改成正常流，不再绝对定位 pin 在底部**。
+     原来这里是 `bottom: .74rem`（绝对定位）⇒ 在**矮屏横屏**（实测 844×390 / 892×412）下，
+     它和 `.title-login` 底部的 `.title-conn`（连接状态行）**落在同一条带**里 ⇒
+     `.title-side` 的 `z-index: 3` 压过 `.title-main` 的 `z-index: 2` ⇒ **连接行被盖住**；
+     `.title-login` 本身也会被盖（实测重叠 2550–3691 px²）。
+     判据：`.workbuddy/tools/c-probe-mobile-title-overlap.mjs`（真 Edge 无头 + 手机视口量矩形重叠）。
+     ✅ 现在用 `position: static` ⇒ 它是 `.title-screen`（flex 居中）的一个**正常流子项**，
+        **排在 `.title-main` 下一行** ⇒ **结构上不可能与入口区重叠**（同 `.title-side__btns` 自己那条注释的思路：
+        "允许折行 ⇒ 结构上不可能横向溢出，这比猜一个宽度可靠"）。 */
+  .title-side { position: static; display: flex; justify-content: center; margin-top: .18rem; }
+  /* 🔴 2026-10-09 第二轮（B12 收 C 授权的两处残余；判据 = `.workbuddy/tools/_b12-probe-title-layout.mjs`，真 Edge 无头 + 触屏仿真）：
+     ① **页脚也进正常流** —— 修前 `.title-foot` 仍是 `position: absolute`，于是侧栏那一行的**下沿 8px 落进页脚带**
+        （实测 `side∩foot = 104×8 = 832 px²`，844×390 / 800×360 / 740×360 三个视口都复现）。
+        改成 static 后它按 `flex-direction: column` 排在最后 ⇒ **结构上不可能再重叠**（与上面 #1 同一思路）。
+     ② **矮屏可滚、不许裁顶** —— 修前 800×360 / 740×360 下 `.title-main.y = -15`（面板上沿被切掉 15px）。
+        ⚠️ 只加 `overflow:auto` **不够**：`.title-screen` 还是 `justify-content:center` ⇒ 内容一超出，
+        flex 居中会把**上方**也顶出去（实测反而变成 -20），而滚动条**滚不到负偏移** ⇒ 顶部永远拿不回来。
+        ⇒ 必须同时 `justify-content: flex-start`（溢出只往下走 ⇒ 才滚得到）+ `overflow: auto`。 */
+  .title-foot { position: static; left: auto; right: auto; bottom: auto; margin-top: .1rem; }
+  .title-screen { min-height: 0; overflow: auto; justify-content: flex-start; }
+  .title-side__btns { flex-direction: row; justify-content: center; flex-wrap: wrap; transform: none; }
+  .title-side__btn { min-width: 0; grid-template-areas: 'icon label'; grid-template-columns: auto auto; }
+  .title-side__micro { display: none; }
+  .title-side__btn .icon { width: .22rem; height: .22rem; }
+  .title-side__label { font-size: .15rem; }
+  .tpanel { padding: .08rem; }
+  .tpanel__box { width: 100%; }
+  .tpanel__head { padding: .14rem .16rem .12rem; }
+  .tpanel__title { font-size: .24rem; }
+  .tpanel__body { padding: .14rem .16rem .2rem; font-size: .15rem; }
 }

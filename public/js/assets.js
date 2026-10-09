@@ -35,7 +35,8 @@
 //   await assets.local();                           // optional local-client art manifest (data/local-assets.json,
 //   assets.localUrl('map/autochess', 'TX_autochessi_D')   DESIGN §13) → URL or null (never required)
 //   assets.spineEntry('enemy_1305_mhslim')          // its official model from the local client once local() listed
-//                                                   // it (manifest spineLocal), else the web model; `.fallback`
+//                                                   // it (manifest spineLocal; enemies and tokens), else the web
+//                                                   // model; `.fallback`
 //
 // Every URL helper is also exported as a pure function taking the manifest first (`avatarUrl(manifest, …)`),
 // so it can be unit tested without a browser. Helpers never throw on unknown ids — they return null and the
@@ -68,8 +69,22 @@ export function avatarUrl(m, id, opts) {
     rec = get(get(m, 'chars'), base);
     if (rec && /_2$/.test(s)) e2 = true;
   }
+  // 🔁 2026-10-08（第 54 轮 A）换装接线：**皮肤优先，缺什么就回退什么**（照 0.1.4.1 冷备的 `assets.js`）。
+  //    顺序（`test/skins.test.js:119-139` 把五种情况都钉住了）：
+  //      ① 皮肤在 且 `avatar` 非空 ⇒ 用皮肤的；② 皮肤在但 `avatar` 缺失/为空 ⇒ **回退原皮**（⛔ 绝不许返回 undefined
+  //        —— 那会让 `<img src=undefined>` 去请求当前页面，比不换装更糟）；③ 皮肤 id 不存在 ⇒ 原皮。
+  const skin = skinOf(rec, opts);
+  if (skin && str(skin.avatar) && !e2) return str(skin.avatar);
   if (rec) return str(e2 && rec.avatarE2) || str(rec.avatar) || null;
   return null;
+}
+
+/** The skin record `opts.skin` names on `rec`, or null (`docs/SKINS.md`; 🔁 2026-10-08 换装接线补). */
+function skinOf(rec, opts) {
+  const id = str(opts && opts.skin);
+  if (!rec || !id) return null;
+  const skins = get(rec, 'skins');
+  return isObj(skins) ? (get(skins, id) || null) : null;
 }
 
 /** Operator half-body portrait (`_1` base, `_2` E2). */
@@ -141,21 +156,33 @@ export function subProfIconUrl(m, sub) {
  * Spine manifest entry for a unit asset id (operator charId, token id, enemy id). `opts.back` asks for the Back
  * model (operators only; falls back to Front). Enemy aliases are resolved transparently. Returns the Spine
  * object of docs/ASSETS.md or null.
- * `opts.local` (the data/local-assets.json manifest): an enemy whose official model only the local client has
- * (`spineLocal`, e.g. 灼热源石虫 — user feedback after 0.1.0, D3) gets that model when the manifest lists every one of
- * its files; the returned entry's `fallback` is the web model (aliased), for a load failure (DESIGN §13: local art is
+ * `opts.local` (the data/local-assets.json manifest): an enemy or token whose official model only the local client has
+ * (`spineLocal`, e.g. 灼热源石虫 — user feedback after 0.1.0, D3 — and most 自选 summons) gets that model when the
+ * manifest lists every one of its files; the returned entry's `fallback` is the web model (an enemy's alias; a token's
+ * web model, mostly none — its view then keeps the avatar diamond), for a load failure (DESIGN §13: local art is
  * optional, everything works without it).
  */
 export function spineEntry(m, id, opts) {
   const s = str(id);
   if (!s) return null;
   const ch = get(get(m, 'chars'), s) || get(get(m, 'chars'), baseCharId(s));
+  // 🔁 2026-10-08（第 54 轮 A）换装接线：**皮肤有自己的模型就用它**（`opts.skin`）。
+  //    只有**格式合法**（`validSpine`）才采用 ⇒ 皮肤条目损坏/缺 atlas 时**优雅回退到原皮**（`test/skins.test.js:121-129`）。
+  //    皮肤**没有**独立 spine 时同样回退原皮（`:125`）。与 0.1.4.1 冷备一致。
+  if (ch) {
+    const skin = skinOf(ch, opts);
+    const skSp = skin && (isObj(skin.spine) ? ((opts && opts.back && isObj(skin.spine.back)) ? skin.spine.back : skin.spine.front) : null);
+    if (skSp && validSpine(skSp)) return skSp;
+  }
   if (ch && isObj(ch.spine)) {
     const sp = (opts && opts.back && isObj(ch.spine.back)) ? ch.spine.back : ch.spine.front;
     return validSpine(sp) ? sp : null;
   }
   const tk = get(get(m, 'tokens'), s);
-  if (tk) return validSpine(tk.spine) ? tk.spine : null;
+  if (tk) {
+    const web = validSpine(tk.spine) ? tk.spine : null;
+    return (opts && opts.local && localSpineEntry(tk.spineLocal, opts.local, web)) || web;
+  }
   const en = get(get(m, 'enemies'), s);
   if (en) {
     let web = null;
@@ -205,8 +232,10 @@ export function validSpine(sp) {
 }
 
 /** Best 2D picture for a unit asset id (operator avatar, token avatar, enemy icon, item icon). */
-export function unitPictureUrl(m, id) {
-  return avatarUrl(m, id) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
+export function unitPictureUrl(m, id, opts) {
+  // 🆕 2026-10-08（第 54 轮 A）换装：只有**干员头像**这一支认识皮肤（`avatarUrl`）；token/enemy/item 没有换装概念，
+  //   所以 opts 只往下传给第一支。`opts` 缺省 ⇒ 与换装功能存在之前逐字节相同。
+  return avatarUrl(m, id, opts) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
 }
 
 // ---- audio ---------------------------------------------------------------------------------------------------
@@ -619,13 +648,13 @@ export function spineDataWeight(data) {
   return Math.max(SPINE_WEIGHT_MIN, w);
 }
 
-/** Atlas page image URLs of a Spine manifest entry (`textures`, else the `<skel name>.png` next to it). */
+/** Atlas page image URLs of a Spine manifest entry (`textures`, else the `<skel name>.webp` next to it). */
 export function spinePages(entry) {
   if (!isObj(entry)) return [];
   const list = Array.isArray(entry.textures) ? entry.textures.filter((u) => str(u)) : [];
   if (list.length) return list;
   const skel = str(entry.skel);
-  return skel ? [skel.replace(/\.skel$/, '.png')] : [];
+  return skel ? [skel.replace(/\.skel$/, '.webp')] : [];
 }
 
 /**
@@ -894,7 +923,9 @@ export function createAssets(options) {
     profIcon: (p, kind) => profIconUrl(m(), p, kind),
     subProfIcon: (s) => subProfIconUrl(m(), s),
     ui: (name) => uiUrl(m(), name),
-    picture: (id) => unitPictureUrl(m(), id),
+    // 🆕 2026-10-08（第 54 轮 A）**换装**：`o.skin` 一路交给 `avatarUrl`（它认识 `chars[].skins[].avatar`）——
+    //   否则**贴图会换成皮肤、头像不换**（同一个单位两处不一致）。`o` 缺省时行为与换装功能存在之前完全相同。
+    picture: (id, o) => unitPictureUrl(m(), id, o),
     spineEntry: (id, o) => spineEntry(m(), id, localManifest ? { ...o, local: localManifest } : o),
     hasBack: (id) => hasBackSpine(m(), id),
     audio: {

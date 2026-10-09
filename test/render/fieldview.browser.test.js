@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'test/e2e/out');
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const hasArt = existsSync(path.join(ROOT, 'public/assets/local/map/autochess/TX_autochessi_D.png'));
+const hasArt = existsSync(path.join(ROOT, 'public/assets/local/map/autochess/TX_autochessi_D.webp'));
 const enabled = process.env.RENDER_E2E === '1' && existsSync(CHROME) && existsSync(path.join(ROOT, 'public/assets'));
 const skip = enabled ? false : 'set RENDER_E2E=1 (needs Chrome and downloaded assets)';
 

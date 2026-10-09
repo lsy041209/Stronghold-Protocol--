@@ -118,7 +118,7 @@ test('invariants: a bond above 999 is a violation (no writer may pass the cap)',
 const YAN = ['chess_char_6_15_a', 'chess_char_5_12_a', 'chess_char_4_17_a', 'chess_char_3_03_a'];
 /** Every enemy takes ×K damage — a stand-in for the 999-layer debuffs of a real board (谢拉格 ×11.34 vs cold / frozen,
  * 奥术 ×11.19 arts taken): with 炎 at 999 (ATK ×10.22) the hits land far past 300000. Once `relentAfter` leader hits
- * were cancelled the leaders lose the stand-in so the fight can finish. */
+ * were **capped** (用户 2026-10-07: 封顶而不是归零) the leaders lose the stand-in so the fight can finish. */
 const K = 2000;
 function limitBattleClass(log, relentAfter = 6) {
   return class extends Battle {
@@ -155,7 +155,7 @@ function limitBattleClass(log, relentAfter = 6) {
   };
 }
 
-test('Final Assault + Hidden Core with a 999-layer 炎 board (real sim, server-run): every leader hit of ≥ 300000 deals 0 and nothing of it reaches the pool; the hits under the line win', () => {
+test('Final Assault + Hidden Core with a 999-layer 炎 board (real sim, server-run): every leader hit of ≥ 300000 is **capped to 300000** and that amount reaches the pool; nothing goes above the line', () => {
   const h = makeMatch({ mode: 'solo', difficulty: 'HARD', seed: 76, fake: true, captureFrames: false, script: (b) => (b.kind === 'normal' ? { duration: 1 } : {}) });
   const m = h.m;
   m.bossId = 'boss_6';       // 阿利斯泰尔 walks into the board
@@ -193,11 +193,14 @@ test('Final Assault + Hidden Core with a 999-layer 炎 board (real sim, server-r
   const op = fa.battle.allyUnits.find((u) => u.kind === 'op' && u.defId === YAN[0]);
   assert.ok(op, 'the operator fought');
   for (const rec of log) {
-    assert.ok(rec.caps.length > 0, `${rec.kind}: hits past the line were cancelled (${rec.caps.length})`);
-    assert.ok(rec.caps.every((n) => n >= BOSS_HIT_LIMIT));
-    assert.ok(rec.leaderHits.every((a) => Math.ceil(a) < BOSS_HIT_LIMIT), `${rec.kind}: no leader hit of ≥ 300000 landed (max ${Math.max(0, ...rec.leaderHits)})`);
-    assert.ok(rec.credits.every((a) => a < BOSS_HIT_LIMIT), `${rec.kind}: nothing ≥ 300000 reached the shared pool`);
-    assert.ok(rec.leaderHits.length > 0, `${rec.kind}: hits under the line landed`);
+    assert.ok(rec.caps.length > 0, `${rec.kind}: hits past the line were **capped** (${rec.caps.length})`);
+    assert.ok(rec.caps.every((n) => n >= BOSS_HIT_LIMIT), `${rec.kind}: every capped event carries a pre-cap hit ≥ 300000`);
+    // 封顶（不是归零）：落在领袖身上的一击**不超过**上限（超线的那些正好是 300000），池里也一样
+    assert.ok(rec.leaderHits.every((a) => Math.ceil(a) <= BOSS_HIT_LIMIT), `${rec.kind}: no leader hit above the line landed (max ${Math.max(0, ...rec.leaderHits)})`);
+    assert.ok(rec.credits.every((a) => a <= BOSS_HIT_LIMIT + 1e-6), `${rec.kind}: nothing above 300000 reached the shared pool`);
+    assert.ok(rec.leaderHits.some((a) => Math.abs(a - BOSS_HIT_LIMIT) < 1e-6), `${rec.kind}: a capped hit really landed 300000 (用户要的"记 30 万")`);
+    assert.ok(rec.credits.some((a) => Math.abs(a - BOSS_HIT_LIMIT) < 1e-6), `${rec.kind}: the pool was credited the capped 300000`);
+    assert.ok(rec.leaderHits.length > 0, `${rec.kind}: leader hits happened`);
     assert.equal(rec.battle.sharedBoss.hp, 0, `${rec.kind}: the pool was emptied by those`);
     assert.equal(rec.battle.reason, 'cleared');
   }

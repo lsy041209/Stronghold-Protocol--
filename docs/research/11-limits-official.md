@@ -200,6 +200,19 @@ line is lost rather than clamped.
 
 ## 4. What the remake did before the implementation, and what it does now
 
+> 🔴 **我方偏离注（2026-10-07 用户裁定；2026-10-08 第 4 任 D 补注）**
+> **本页 §2／§4 表里写的 "→ 0"（整次作废）是【官方】的行为，也是本作 2026-10-01 的旧实现。**
+> **本作现在不是这样**：`dealDamage` 走 **`capLeaderHit`**，`ceil(final) ≥ BOSS_HIT_LIMIT` 时
+> **返回 `BOSS_HIT_LIMIT`（= 300000）= 封顶，超出部分丢弃**，而不是清零。
+> * 代码：`server/sim/damage.js:307`（在**减伤与倍率之后、`absorbShields` 之前**调用）＋ `capLeaderHit`（`:205-210`）；
+>   `battle/combat.js:32` 的"传递损失"同样走它。
+> * 旧谓词 **`leaderHitCancelled` 仍原样导出**（供 §6 与既有判据 import），但**流水线不再调用它** ——
+>   它现在只表示"**官方那条规则怎么说**"。
+> * **⛔ 别把 `damage.js` 改回 `leaderHitCancelled`**（`damage.js:306` 有同样的红字警告）。
+> * 玩家可见口径见 `docs/PLAYING.md` 的「限伤」两条。
+> 📌 **本节以下（§4 表、§5 提案、§6 实现记录）保留原文不改**：§5/§6 是 **2026-10-01 的历史记录**，
+> 记的就是当时"整次作废"的实现；**改它就是篡改历史**。现值以本注 ＋ `docs/design/engine.md` 为准。
+
 | | Remake before (master 7094892) | Remake now (§6) | Official |
 |---|---|---|---|
 | Layers | uncapped: `PlayerState.addLayers` (prep), `Match.js` settle (`ps.layers[b] += layerGains`), `Battle.addLayers` (live in-battle copy) | per bond `min(L + n, 999)` at every writer (`layerGainRoom`) | per bond `min(L + n, 999)` |
@@ -220,7 +233,7 @@ line is lost rather than clamped.
 - `shared/constants.js`: `BOND_LAYER_CAP = 999` and `BOSS_HIT_LIMIT = 300000` (0 / Infinity = off), plus
   `layerGainRoom(before, n)` = min(n, cap − before), never negative.
 - Layers: every writer clamps with it — `PlayerState.addLayers` (every prep-side gain: 特质, items, bands, 机变 cards,
-  bonds), the settle of the in-battle gains (`Match.js`), `Battle.addLayers` (the live in-battle copy, after the
+  bonds), the settle of the in-battle gains (`Match.settle`, `server/match/match/settle.js`), `Battle.addLayers` (the live in-battle copy, after the
   `layerGain` hook, as the client's `AddBondCount`); a gain at the cap adds 0 (no onLayers, no 'layer' event, no hook),
   so the per-N milestones (远见, 奇迹, 维多利亚 …) stop with the count; the client-result check (`fields.js`) bounds a
   reported gain by the room left from the bond's starting layers; `invariants.js` flags a bond above the cap. The dev

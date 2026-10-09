@@ -14,6 +14,7 @@
 
 import { GEO } from '../../../shared/constants.js';
 import { attackRangeGrid } from '../../../shared/loadoutRecord.js';
+import { N_ } from '../../../shared/i18n.js';
 
 export const DIRS = Object.freeze(['UP', 'RIGHT', 'DOWN', 'LEFT']);
 export const DEFAULT_DIR = 'RIGHT';
@@ -29,7 +30,7 @@ export const DIR_VEC = Object.freeze({
 });
 
 /** Chinese label (for aria / tooltips). */
-export const DIR_LABEL = Object.freeze({ UP: '上', RIGHT: '右', DOWN: '下', LEFT: '左' });
+export const DIR_LABEL = Object.freeze({ UP: N_('上'), RIGHT: N_('右'), DOWN: N_('下'), LEFT: N_('左') });
 
 /** Normalise any direction spelling ('up', 'Right', 1/−1 facing) to UP|RIGHT|DOWN|LEFT; unknown → `fallback`. */
 export function normDir(d, fallback = DEFAULT_DIR) {
@@ -158,9 +159,28 @@ export function artHasFacing(item) {
 }
 
 /**
+ * 🔴 **陷阱型手部署召唤物：不需要选部署方向**（用户 2026-10-06 口径）。
+ *
+ * **用户原话**：「棋子属于召唤物的同时也是**陷阱**，所以他**不需要选择部署方向**」。
+ *
+ * 判据（用现成数据，不新增协议字段）：
+ *   · `placeable === true`（待部署区里可手放的手牌）**且**
+ *   · `rangeGrid` 是**自身一格**（`[[0,0]]`）
+ * ⇒ 它的作用范围**与朝向完全无关** ⇒ 四个方向在**行为上完全等价**（引擎的 `absoluteRangeKeys([[0,0]],…)`
+ *   四个方向都只返回自身那一格），所以让玩家选方向是**纯多余的一步** ✓
+ * ⚠️ **不同**于「爬行号·防护单元」（`[[0,0],[0,1]]` —— 有方向性）与其它非自身格召唤物 ⇒ 它们**仍然照旧选方向** ✓
+ * @param {any} token tokens.json 记录（`lookups.getToken(piece.id)`）
+ */
+export function summonNeedsNoFacing(token) {
+  if (!isObj(token) || token.placeable !== true) return false;
+  const g = Array.isArray(token.rangeGrid) ? token.rangeGrid : [];
+  return g.length > 0 && g.every((x) => Array.isArray(x) && x[0] === 0 && x[1] === 0);
+}
+
+/**
  * Whether dropping `uid` on `target` enters the direction step (instead of sending the intent at once): operators and
  * summons dropped on a board tile (move, swap or their own tile), and directional Arts used on a tile.
- * @param {{ pieces: Map<number, any>, getItem?: (id:string)=>any }} ctx placementContext (gameLogic.js)
+ * @param {{ pieces: Map<number, any>, getItem?: (id:string)=>any, getToken?: (id:string)=>any }} ctx placementContext (gameLogic.js)
  * @param {number} uid
  * @param {any} target
  * @param {{ ok: boolean, action?: string }} res canPlace(ctx, uid, target)
@@ -169,6 +189,8 @@ export function needsFacing(ctx, uid, target, res) {
   if (!res || !res.ok || !isObj(target) || target.area !== 'board') return false;
   const piece = ctx?.pieces?.get(uid)?.piece;
   if (!piece) return false;
+  // 陷阱型手部署召唤物（棋子）：范围是自身一格 ⇒ **不选方向**，直接落地（`dropIntent` 会给默认朝向）✓
+  if (piece.kind === 'token' && summonNeedsNoFacing(ctx?.getToken?.(piece.id))) return false;
   if (piece.kind === 'chess' || piece.kind === 'token') return res.action === 'move' || res.action === 'swap' || res.action === 'orient';
   if (piece.kind === 'item' && res.action === 'art') return artHasFacing(ctx.getItem?.(piece.id));
   return false;

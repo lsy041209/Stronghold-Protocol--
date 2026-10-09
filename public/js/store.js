@@ -21,6 +21,7 @@
 
 import { useLayoutEffect, useReducer, useRef } from '../vendor/hooks.module.js';
 import { PHASE } from '../../shared/constants.js';
+import { t } from '../../shared/i18n.js';
 
 /**
  * Create an observable store.
@@ -81,6 +82,12 @@ export const initialState = Object.freeze({
   match: emptyMatch(),
   ticker: [],
   emotes: [],
+  // 我方：房间聊天环形缓冲（服务端 `chat.msg` / `chat.history` 两条帧；见 public/js/ui/chatModel.js）。
+  // 上游 0.2.x 没有聊天 ⇒ 这个字段是我方新增（换基座时被覆盖过一次，2026-10-07 重挂）。
+  chat: [],
+  // 🆕 2026-10-08（用户口径：匹配要有"匹配中"的界面，且**不能一进房就消失**）：
+  //    `{ at }` = 正在快速匹配（**跨屏**状态，见 `ui/matchOverlay.js`）；null = 没在匹配。
+  matchSearch: null,
   clock: { offset: 0, rtt: null, synced: false },
   ui: { pendingJoin: null, restoring: false, buildStale: false },
 });
@@ -89,8 +96,19 @@ export const initialState = Object.freeze({
 export const store = createStore(initialState);
 
 /**
+ * 🆕 2026-10-08（用户口径「按下匹配后不要进入房间页面，直接在主页面展开浮层」）：
+ * **快速匹配期间留在主页面** —— 服务端会立刻把你放进/建好一个房（`s.room` 有值），但界面**不切房间屏**。
+ * 开局（`inMatch`）或取消（`matchSearch = null`）之后这条就不再生效。
+ * @param {any} s store state
+ */
+export function matchingKeepsLobby(s) {
+  const phase = s?.match?.public?.phase;
+  return !!s?.matchSearch && !s?.room?.inMatch && !(phase && phase !== PHASE.LOBBY);
+}
+
+/**
  * Which screen the router shows for a given app state:
- * not entered → title; m.public.phase ≠ LOBBY or room.inMatch → game; in a room → room; else lobby.
+ * not entered → title; m.public.phase ≠ LOBBY or room.inMatch → game; **匹配中 → lobby**; in a room → room; else lobby.
  * @param {any} s store state
  * @returns {'title'|'lobby'|'room'|'game'}
  */
@@ -99,6 +117,7 @@ export function selectRoute(s) {
   const phase = s.match?.public?.phase;
   if (phase && phase !== PHASE.LOBBY) return 'game';
   if (s.room?.inMatch) return 'game'; // match starting: m.public is on its way
+  if (matchingKeepsLobby(s)) return 'lobby';   // 🔴 匹配中：留在主页面（浮层在那里；不进房间屏）
   if (s.room) return 'room';
   return 'lobby';
 }
@@ -125,8 +144,8 @@ export function isSpectating(room, playerId) {
 export function sessionResetNotice(prev, playerId) {
   const prevId = prev?.me?.playerId;
   if (prevId == null || prevId === playerId) return null;
-  if (prev?.match?.public || prev?.room?.inMatch) return '服务器会话已重置，上一局模拟已结束';
-  if (prev?.room) return '服务器会话已重置，已返回大厅';
+  if (prev?.match?.public || prev?.room?.inMatch) return t('服务器会话已重置，上一局模拟已结束');
+  if (prev?.room) return t('服务器会话已重置，已返回大厅');
   return null;
 }
 

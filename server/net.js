@@ -29,6 +29,8 @@
 //
 // The handler object (implemented by server/lobby.js) receives:
 //   onHello(session, { resumed, repeat })  after `welcome` was sent
+//   welcomeInfo() → object (optional)      extra fields of every `welcome` (never one of its own keys): the lobby's
+//                                          `diyKitted` (0.2.0 自选编队 — which operators a DIY slot may field)
 //   onMessage(session, msg) → { ok: true } | { error: ERR code, detail?: string } | undefined
 //   routeGame(session, msg) → same (optional): client-side combat reports `b.progress` / `b.result` (DESIGN §14) go
 //                                          straight to the running match through it; without it they reach onMessage
@@ -37,7 +39,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
-import { C2S, validateC2S } from '../shared/protocol.js';
+import { C2S, CHAT_LIMITS, validateC2S } from '../shared/protocol.js';
 import { ERR, ERR_TEXT, NAME_MAX_LEN, PROTOCOL_VERSION } from '../shared/constants.js';
 
 /** Tunables (all overridable through the Network / SessionRegistry constructors). */
@@ -55,15 +57,26 @@ export const NET_DEFAULTS = Object.freeze({
   maxSessions: 20_000,          // registry cap; oldest idle sessions are evicted first
   heavyPerSec: 2,               // refill of the bucket for resend-heavy intents (HEAVY_TYPES)
   heavyBurst: 6,
+  chatPerSec: 1,                // refill of the bucket for the in-room text chat (CHAT_TYPES, D-3)
+  chatBurst: 3,                 // …its capacity: 1 条/秒、突发 3 (口径 §2)
   trustProxy: 'auto',           // forwarding headers: 'auto' = from loopback/private peers only, true = always, false = never
 });
 
 /**
  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
- * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits) and room.spectate
+ * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits), room.ownership
+ * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.spectate']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate']);
+
+/**
+ * Intents that draw from the small chat bucket (**1/s, burst 3** — the D-3 spec): an ordinary on-topic chat line, so a
+ * chatty player cannot burn the tokens `g.watch` needs, and a compromised client cannot turn the room broadcast into a
+ * flood. Reuses the same TokenBucket as the other two buckets (no second limiter system).
+ */
+// 🆕 2026-10-08 快捷短语也走这只小桶（1 条/秒、突发 3）：否则一屏短语能刷爆同房所有人的聊天面板。
+export const CHAT_TYPES = new Set(['room.chat', 'room.quickMsg']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
@@ -88,6 +101,11 @@ export class Session {
     this.token = token;
     /** @type {string} sanitized nickname */
     this.name = name;
+    /**
+     * 🆕 2026-10-09 W-6 **头像**：玩家从 `public/assets/avatar/manifest.json` 里挑的 id（空 = 默认字形）。
+     * ⛔ **只存 id，绝不存文件名/路径** —— id→`/assets/avatar/<file>` 的映射在客户端（与短语只传 id 同一条口径）。
+     */
+    this.avatarId = '';
     /** @type {import('ws').WebSocket | null} currently bound socket */
     this.ws = null;
     /** @type {boolean} */
@@ -106,6 +124,15 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    /** @type {readonly string[] | null} checked not-owned chess ids (干员持有, lobby-owned, 0.2.0 补位) */
+    this.notOwned = null;
+    /** @type {Readonly<Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>> | null} checked 自选 picks (lobby-owned, 0.2.0 自选编队) */
+    this.diy = null;
+    /**
+     * @type {Readonly<Record<string, string>> | null} the player's operator skins `{ [baseChessId]: skinId }`
+     * (lobby-owned, docs/SKINS.md). 🔁 2026-10-08（第 54 轮 A）：换基座到 0.2.1 时丢掉（0.1.4.1 冷备同处有此字段）⇒ 已接回。
+     */
+    this.skins = null;
     /** @type {string} client address of the latest connection (logging) */
     this.addr = '?';
     /** @type {string | null} per-network limit key of the latest connection (null = not limited), see clientAddress */
@@ -349,6 +376,21 @@ export function sanitizeName(raw) {
   return s.length > 0 ? s : null;
 }
 
+/**
+ * Normalize one chat line (D-3, `room.chat { text }` → `chat.msg.text`): strip the same control / zero-width / bidi
+ * characters a nickname does (including CR/LF, so a line is always single-line), drop lone surrogates, cap at `max`
+ * **Unicode code points** (never bytes: `[...s]` counts 😀 as 1) and trim. Returns null when nothing printable is left.
+ *
+ * NOT a security boundary by itself — the client must render the text as a text node, never as HTML (D → B 口径 §2).
+ * @param {unknown} raw @param {number} [max] code points
+ * @returns {string | null}
+ */
+export function sanitizeChat(raw, max = CHAT_LIMITS.text) {
+  if (typeof raw !== 'string') return null;
+  const s = [...raw.normalize('NFC').replace(LONE_SURROGATE_RE, '').replace(STRIP_RE, '')].slice(0, max).join('').trim();
+  return s.length > 0 ? s : null;
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Client addresses (per-network limits)
 // ---------------------------------------------------------------------------------------------------
@@ -476,6 +518,7 @@ class Connection {
     this.session = null;
     this.bucket = new TokenBucket(opts.ratePerSec, opts.rateBurst, now);
     this.heavy = new TokenBucket(opts.heavyPerSec, opts.heavyBurst, now);
+    this.chat = new TokenBucket(opts.chatPerSec, opts.chatBurst, now);
     this.dropWindowAt = now;
     this.drops = 0;
     /** true once the server initiated the close; frames still in flight are ignored */
@@ -497,7 +540,7 @@ export class Network {
   /**
    * @param {{
    *   registry: SessionRegistry,
-   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function },
+   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function, welcomeInfo?: Function },
    *   log?: { info: Function, warn: Function, error: Function, debug?: Function },
    *   now?: () => number,
    *   options?: Partial<typeof NET_DEFAULTS>,
@@ -525,7 +568,7 @@ export class Network {
   get connectionCount() { return this.conns.size; }
 
   /**
-   * Upgrade-time admission check (server/index.js): null to accept, otherwise the reason to refuse.
+   * Upgrade-time admission check (server/http/websocket.js): null to accept, otherwise the reason to refuse.
    * @param {import('node:http').IncomingMessage} req
    * @returns {null | 'shutdown' | 'full' | 'per-address'}
    */
@@ -601,6 +644,9 @@ export class Network {
     if (msg.t === 'hello') { this.onHelloMsg(conn, msg, now); return; }
     if (!conn.session) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'hello required')); return; }
     if (HEAVY_TYPES.has(msg.t) && !conn.heavy.take(now)) { this.reply(conn, errorMsg(ERR.RATE, rid, `${msg.t} too often`)); return; }
+    // 房间内打字聊天 (D-3): its own bucket (1/s, burst 3) — the refusal is an explicit ERR.RATE (never a silent drop),
+    // and it answers here, i.e. before lobby.chat() ever runs.
+    if (CHAT_TYPES.has(msg.t) && !conn.chat.take(now)) { this.reply(conn, errorMsg(ERR.RATE, rid, `${msg.t} too often`)); return; }
 
     let res;
     try {
@@ -653,7 +699,9 @@ export class Network {
     session.addr = conn.ip;
     session.limitKey = conn.key;
 
-    const welcome = { t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
+    let extra = null;
+    try { extra = this.handler.welcomeInfo?.() ?? null; } catch (e) { this.log.error('[net] welcomeInfo crashed', e); }
+    const welcome = { ...(extra && typeof extra === 'object' ? extra : null), t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);
     try {

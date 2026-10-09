@@ -31,6 +31,7 @@
 
 import { PROTOCOL_VERSION, ERR_TEXT } from '../../shared/constants.js';
 import { validateC2S } from '../../shared/protocol.js';
+import { N_ } from '../../shared/i18n.js';
 
 export const REQUEST_TIMEOUT_MS = 8000;
 export const HELLO_TIMEOUT_MS = 8000;
@@ -40,12 +41,12 @@ export const BACKOFF = Object.freeze({ base: 500, factor: 2, max: 10000, jitter:
 
 /** Client-side error codes (in addition to shared ERR codes). */
 export const CLIENT_ERR_TEXT = Object.freeze({
-  TIMEOUT: '请求超时，请重试',
-  OFFLINE: '未连接到服务器',
-  DISCONNECTED: '连接已断开，请重试',
-  CLOSED: '连接已关闭',
-  REPLACED: '该身份已在其他页面登录',
-  VERSION: '客户端版本与服务器不一致，请刷新页面',
+  TIMEOUT: N_('请求超时，请重试'),
+  OFFLINE: N_('未连接到服务器'),
+  DISCONNECTED: N_('连接已断开，请重试'),
+  CLOSED: N_('连接已关闭'),
+  REPLACED: N_('该身份已在其他页面登录'),
+  VERSION: N_('客户端版本与服务器不一致，请刷新页面'),
 });
 
 /** Server close code: the session was taken over by another socket (server/net.js CLOSE.REPLACED). */
@@ -62,7 +63,7 @@ const QUIET_SWAP_MIN_AGE_MS = 5000;
  * @returns {string}
  */
 export function errorText(code, msg) {
-  return ERR_TEXT[code] || CLIENT_ERR_TEXT[code] || (typeof msg === 'string' && msg) || String(code || '未知错误');
+  return ERR_TEXT[code] || CLIENT_ERR_TEXT[code] || (typeof msg === 'string' && msg) || String(code || N_('未知错误'));
 }
 
 /** Error thrown/rejected by requests. `code` is an ERR code or a CLIENT_ERR_TEXT key. */
@@ -92,12 +93,40 @@ export function backoffDelay(attempt, rand = Math.random) {
 }
 
 /**
- * WebSocket URL for the current page (`ws(s)://host/ws`).
- * @param {{protocol: string, host: string}} [loc]
+ * Socket origin from a `?server=` override, or '' when absent.
+ *
+ * This is what lets a guest play on a *remote* server while the page itself stays local: the game
+ * files are 300 MB, so opening the host's copy over the internet is slow, and a free tunnel's
+ * browser splash page stands in the way anyway. Pointing a locally served page at the host's socket
+ * instead reuses the guest's own files and talks only game state over the wire.
+ *
+ * Accepts `host` / `host:port` (a bare host is a tunnel, so TLS is assumed) or a full
+ * `ws://…` / `wss://…` origin for anything unusual.
+ *
+ * @param {string} [search] e.g. location.search
+ * @returns {string} origin without the `/ws` path
+ */
+export function serverOverride(search) {
+  try {
+    const raw = String(new URLSearchParams(search || '').get('server') || '').trim();
+    if (!raw) return '';
+    if (/^wss?:\/\//i.test(raw)) return raw.replace(/\/+$/, '');
+    const clean = raw.replace(/^\/+|\/+$/g, '');
+    return `${/:\d+$/.test(clean) ? 'ws' : 'wss'}://${clean}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * WebSocket URL for the current page (`ws(s)://host/ws`), honouring `?server=`.
+ * @param {{protocol: string, host: string, search?: string}} [loc]
  * @returns {string}
  */
 export function defaultWsUrl(loc = globalThis.location) {
   if (!loc || !loc.host) return 'ws://localhost:3000/ws';
+  const forced = serverOverride(loc && loc.search);
+  if (forced) return `${forced}/ws`;
   return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
 }
 

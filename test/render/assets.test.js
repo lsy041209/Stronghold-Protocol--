@@ -534,10 +534,10 @@ describe('spine unload frees the atlas page images too', () => {
     return { calls, restore: () => { if (prev === undefined) delete globalThis.PIXI; else globalThis.PIXI = prev; } };
   }
 
-  test('spinePages: manifest textures, else <skel>.png', () => {
+  test('spinePages: manifest textures, else <skel>.webp (the converted tree\'s atlas pages)', () => {
     assert.deepEqual(spinePages(SP('x')), ['/assets/spine/x.png']);
     assert.deepEqual(spinePages({ skel: '/s/a.skel', textures: ['/s/a.png', '/s/a2.png'] }), ['/s/a.png', '/s/a2.png']);
-    assert.deepEqual(spinePages({ skel: '/s/b.skel' }), ['/s/b.png']);
+    assert.deepEqual(spinePages({ skel: '/s/b.skel' }), ['/s/b.webp']);
     for (const junk of [null, 1, {}, { textures: [null, 3] }]) assert.deepEqual(spinePages(junk), []);
   });
 

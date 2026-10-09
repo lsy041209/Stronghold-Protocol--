@@ -34,6 +34,11 @@ import { COLS, PUSH_DIRECTIONAL_MIN_DIST } from '../../constants.js';
 import { bodyDist, bodyInKeys, bodyOnTile } from '../../body.js';
 import { normalizeChess, normalizeSkill } from '../../simdata.js';
 import { tacticalPoint as sharedTacticalPoint, releaseSkillSummon } from '../tokens.js';
+// 外援干员的 kit 在 reserve.js（10-05 加）：赤刃明霄陈 / 斩业星熊。
+// ⚠️ 这里也必须展开：test/content/kits_alt_t3.test.js 是 `import KITS from '.../kits/tier3.js'`，
+//    **直接读本文件的默认导出**，不走 content/index.js 的合并注册表。测试期这两位是 tier 3，
+//    所以 kit 必须能从 tier3.js 取到；正式版是 tier 6，tier6.js 里同样展开了 —— 单一来源，无重复。
+import reserveKits from './reserve.js';
 
 // ---------------------------------------------------------------------------------------------------------------
 // helpers
@@ -608,10 +613,8 @@ const KITS = {
       skills: altSkills(chess, d, bb, {
         'skcom_quickattack[3]': statSkill,
         skchr_skadi_2: (s) => ({
-          kind: 'passive',
-          onStart({ battle, unit }) { // "部署后N秒内攻击力+X" (a passive starts at every deployment)
-            battle.addBuff(unit, { key: 'skill:skadi_wave', duration: num(s.bb.duration, 20), mods: { atkPct: num(s.bb.atk) }, visible: true });
-          },
+          kind: 'duration', activateOnDeploy: true, duration: num(s.bb.duration, 20), spCost: 0, spType: 'none', trigger: 'NEVER',
+          mods: { atkPct: num(s.bb.atk) },
         }),
       }),
       talents: [
@@ -1103,7 +1106,9 @@ const KITS = {
               const dur = skill.timeLeft > 0 ? skill.timeLeft : Math.max(0.1, num(s.duration, 10));
               let n = 0;
               // PRTS 备注: "技能生效对象实际为“自身这格内的所有地面敌人及自身阻挡的敌人”，即使阻挡的是飞行敌人" — a blocked
-              // enemy stands at the block radius, outside her tile (Battle._checkBlock)
+              // enemy stands at the block radius, outside her tile (Battle._checkBlock). Asleep they are no longer blocked
+              // (沉睡 = 不可阻挡, DESIGN §24.9; GitHub #140): her slots free for the next enemies, and a sleeper that wakes
+              // is held again only while she has room
               for (const e of battle.enemies) {
                 if (!e.alive || e.hidden) continue;
                 if (e.blockedBy !== unit && (e.isFlying || !bodyOnTile(e, unit.tileR, unit.tileC))) continue;
@@ -1798,4 +1803,4 @@ const KITS = {
   },
 };
 
-export default KITS;
+export default { ...reserveKits, ...KITS };

@@ -1,0 +1,931 @@
+{
+  "_README": "斩业星熊（外援干员）—— 重装·驭法铁卫。数据全部取自官方表，不凭印象：",
+  "_来源": "character_table.json（char_1044_hsgma2）+ skill_table.json（skchr_hsgma2_1/2/3），缓存于 .cache/",
+  "_面板口径": "tier 6 官方口径 = phase 2 / level 1；stats 按 character_table.phases[2] 关键帧插值到 Lv1（潜 0、信赖 0），与 docs/research/03-operators.json 的 meta.statFormula 一致。",
+  "_范围": "本体 1-1 = [[0,0],[0,1]]；S3 = x-2（21 格 = 5×5 去四角，与 data/chess.json 里 12 个用 x-2 的干员逐格一致）。",
+  "pack": "hsgma2",
+  "version": 1,
+  "targetBase": "0.1.3",
+  "note": "斩业星熊（外援）—— 驭法铁卫：负生命「我执」/ 受击反伤 / 盾牌环绕 / 群体锁血与伤害承担",
+  "chess": [
+    {
+      "chessId": "chess_hsgma2_a",
+      "charId": "char_1044_hsgma2",
+      "tier": 6,
+      "_tier测试版": "⚠️ 测试期**3 阶且可见**。**不是 1 阶的原因**：`test/data.test.js` 规定 `tier <= 2` 的普通干员不能有 S3（贝洛内只有 2 技能所以能待 1 阶）。星熊有 S1/S2/S3，降到 1 阶三技能就测不了。**3 阶是能带 3 技能的最低阶级。** ⚠️ **[2026-10-06 12:2x T-5 已落实上面这句「正式值」]** 现在就是 `tier 6 + visible:false`（用户裁：**正式版也要装这四位外援**）——「测试期」三个字已过期，保留作历史。",
+      "_tier正式": 6,
+      "name": "斩业星熊",
+      "appellation": "Hoshiguma the Breacher",
+      "rarity": 6,
+      "profession": "TANK",
+      "subProfessionId": "artsprotector",
+      "subProfessionName": "驭法铁卫",
+      "position": "MELEE",
+      "nationId": "lungmen",
+      "bonds": [
+        "yanShip"
+      ],
+      "garrisonIds": [],
+      "tokens": [],
+      "price": 4,
+      "sellPrice": 1,
+      "isReserve": true,
+      "_reserve": "外援干员：可装五阶/六阶外援槽位；份数由槽位阶级决定（五阶 8 / 六阶 5），够 3 张合成精锐。⚠️ **T-5 之后它只走外援槽这条路**（不再同时是可见干员）。",
+      "visible": false,
+      "isHidden": false,
+      "_可见性测试版": "⚠️ 测试期**可见**，进入 1 阶商店卡池，出现率与其他 1 阶干员平分。⚠️ **[已过期]** 原文写「正式值：visible=false / isHidden=true」—— 实际 T-5 只把 `visible` 改 false，**`isHidden` 保持 `false`**（照 `bellone.pack.json` 的外援形态，那份连 `isHidden` 字段都没有）。",
+      "_poolCopies测试版": "⚠️ 测试期**不写 poolCopies**，按 tier-1 常规份数（12）参与，出现率才真正平分。",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 2592,
+        "atk": 533,
+        "def": 431,
+        "res": 15,
+        "cost": 26,
+        "blockCnt": 3,
+        "bat": 1.6,
+        "aspd": 100,
+        "respawnTime": 70,
+        "moveSpeed": 1,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "_stats": "精英2 Lv1（官方插值）。Lv50 为 3120/607/503，Lv90 为 3551/667/561，供对照。阻挡 3 是重装本职。",
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "dmgType": "phys",
+      "_dmgType": "本体普通攻击是物理伤害；「技能开启时普通攻击会造成法术伤害」是特性（trait），由 kit 在技能期间切换为法术。",
+      "attackKind": "melee",
+      "projectile": "none",
+      "canHitFly": false,
+      "targetPriority": null,
+      "rangeId": "1-1",
+      "rangeGrid": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "trait": {
+        "desc": "技能开启时普通攻击会造成法术伤害",
+        "descRaw": "技能开启时普通攻击会造成<@ba.kw>法术伤害</>",
+        "bb": {},
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "_trait": "注意：这是**基础特性**（不是模组才有的）。模组「无迹」在此基础上追加「攻击和受到攻击时对目标额外造成10%攻击力的法术伤害」，写在 elite.modules[0].traitOverride。",
+      "talents": [
+        {
+          "name": "业火",
+          "desc": "生命降至0时进入“我执”：期间不成为其他角色的治疗目标，受到的伤害会继续积累，积累至生命上限的200%时被击倒，5秒内未受到伤害时，每秒回复5%生命，生命大于0时退出“我执”",
+          "descRaw": "生命降至0时进入“我执”：期间不成为其他角色的治疗目标，受到的伤害会继续积累，积累至生命上限的<@ba.vup>200%</>时被击倒，<@ba.vup>5</>秒内未受到伤害时，每秒回复<@ba.vup>5%</>生命，生命大于0时退出“我执”",
+          "bb": {
+            "max_minus_hp_ratio": 2,
+            "hsgma2_t_1[heal].interval": 5,
+            "hsgma2_t_1[heal].hp_recovery_per_sec_by_max_hp_ratio": 0.05,
+            "interval": 0.03
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        },
+        {
+          "name": "鬼之架势",
+          "desc": "在场时，自身获得最高+50法术抗性和35%攻击力的坚忍（损失70%生命值时达到最大加成）",
+          "descRaw": "在场时，自身获得最高<@ba.vup>+50</>法术抗性和<@ba.vup>35%</>攻击力的<$ba.berserk>坚忍</>（损失<@ba.vup>70%</>生命值时达到最大加成）",
+          "bb": {
+            "max_hp_ratio": 1,
+            "min_hp_ratio": 0.3,
+            "min_atk": 0.35,
+            "max_atk": 0,
+            "min_magic_resistance": 50,
+            "max_magic_resistance": 0
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        }
+      ],
+      "_talents": "官方 E2 档（PHASE_2、潜0）原始黑板。⚠️ 每项必须带 rangeGrid / tokenKey（官方形状）—— 少了它们精锐的 deepStrictEqual 会红。注意「业火」= 负生命机制：max_minus_hp_ratio 2 表示可累积到生命上限的 200% —— 本作引擎没有负生命，需在 kit 里新做（见备注）。",
+      "skill": {
+        "skillId": "skchr_hsgma2_1",
+        "iconId": "skchr_hsgma2_1",
+        "name": "恶业苦果",
+        "level": 4,
+        "desc": "攻击力+40%，防御力+40%，每次受到攻击时对目标造成相当于斩业星熊攻击力100%的法术伤害\n持续时间无限",
+        "descRaw": "攻击力<@ba.vup>+40%</>，防御力<@ba.vup>+40%</>，每次受到攻击时对目标造成相当于斩业星熊攻击力<@ba.vup>100%</>的法术伤害\n<@ba.rem>持续时间无限</>",
+        "skillType": "AUTO",
+        "durationType": "NONE",
+        "duration": -1,
+        "spType": "INCREASE_WHEN_TAKEN_DAMAGE",
+        "spCost": 15,
+        "initSp": 0,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "atk": 0.4,
+          "def": 0.4,
+          "atk_scale": 1
+        },
+        "bbStr": {},
+        "rangeId": null,
+        "rangeGrid": null,
+        "prefabId": "skchr_hsgma2_1",
+        "trigger": {
+          "rule": "DEFAULT"
+        }
+      },
+      "skills": [
+        {
+          "skillId": "skchr_hsgma2_1",
+          "iconId": "skchr_hsgma2_1",
+          "name": "恶业苦果",
+          "level": 4,
+          "desc": "攻击力+40%，防御力+40%，每次受到攻击时对目标造成相当于斩业星熊攻击力100%的法术伤害\n持续时间无限",
+          "descRaw": "攻击力<@ba.vup>+40%</>，防御力<@ba.vup>+40%</>，每次受到攻击时对目标造成相当于斩业星熊攻击力<@ba.vup>100%</>的法术伤害\n<@ba.rem>持续时间无限</>",
+          "isDefault": true,
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WHEN_TAKEN_DAMAGE",
+          "spCost": 15,
+          "initSp": 0,
+          "bb": {
+            "atk": 0.4,
+            "def": 0.4,
+            "atk_scale": 1
+          },
+          "trigger": {
+            "rule": "DEFAULT"
+          }
+        },
+        {
+          "skillId": "skchr_hsgma2_2",
+          "iconId": "skchr_hsgma2_2",
+          "name": "无始无明",
+          "level": 4,
+          "desc": "投出盾牌并以攻击力55%的三连击攻击所有阻挡的敌人，盾牌会环绕斩业星熊飞行一圈；盾牌碰到敌人时使目标停顿，每0.5秒对其造成攻击力80%的法术伤害，自身回复盾牌造成伤害10%的生命",
+          "descRaw": "投出盾牌并以攻击力<@ba.vup>55%</>的三连击攻击所有阻挡的敌人，盾牌会环绕斩业星熊飞行<@ba.vup>一圈</>；盾牌碰到敌人时使目标<$ba.sluggish>停顿</>，每<@ba.vup>0.5</>秒对其造成攻击力<@ba.vup>80%</>的法术伤害，自身回复盾牌造成伤害<@ba.vup>10%</>的生命",
+          "isDefault": false,
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WHEN_ATTACK",
+          "spCost": 9,
+          "initSp": 0,
+          "bb": {
+            "attack@atk_scale": 0.55,
+            "shield_atk_scale": 0.8,
+            "sluggish": 1,
+            "interval": 0.5,
+            "heal_ratio": 0.1
+          },
+          "trigger": {
+            "rule": "DEFAULT"
+          }
+        },
+        {
+          "skillId": "skchr_hsgma2_3",
+          "iconId": "skchr_hsgma2_3",
+          "name": "地狱变相",
+          "level": 4,
+          "desc": "攻击范围扩大，生命上限+55%，攻击力+150%，以二连击攻击最多2名敌人；主动关闭技能后11秒内保留技能加成且不会被击倒，攻击变为四连击，承担攻击范围内我方干员受到的致命伤害，11秒后强制退出战场\n可主动关闭（期间可随时停止技能）",
+          "descRaw": "攻击范围<@ba.vup>扩大</>，生命上限<@ba.vup>+55%</>，攻击力<@ba.vup>+150%</>，以二连击攻击最多<@ba.vup>2</>名敌人；主动关闭技能后<@ba.vup>11</>秒内保留技能加成且不会被击倒，攻击变为四连击，承担攻击范围内我方干员受到的致命伤害，<@ba.vup>11</>秒后强制退出战场\n<@ba.rem>可主动关闭（期间可随时停止技能）</>",
+          "isDefault": false,
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 32,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 55,
+          "initSp": 28,
+          "bb": {
+            "max_hp": 0.55,
+            "atk": 1.5,
+            "attack@max_target": 2,
+            "before_dead_duration": 11
+          },
+          "rangeId": "x-2",
+          "rangeGrid": [
+            [
+              2,
+              -1
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              -2
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -2,
+              -1
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ]
+          ],
+          "trigger": {
+            "rule": "DEFAULT"
+          }
+        }
+      ],
+      "_skills": "S1/S2/S3 取官方 L4（skillLevel=4）。S1/S2 的 duration 用官方原值 -1 = 无限持续（对照 data/chess.json 的 skchr_tinman_1）。",
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_1044_hsgma2",
+        "portrait": "char_1044_hsgma2_1",
+        "spine": "char_1044_hsgma2",
+        "skillIcon": "skchr_hsgma2_3",
+        "subProfIcon": "sub_artsprotector_icon"
+      },
+      "_assets": "⚠️ 官方命名（_a 用 _1、_b 用 _2、spine 同名）。本作客户端（0.1.3）素材集里**没有**这位的美术，所以目前退回首字占位符「斩」。美术补进来后不用改包。",
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_hsgma2_b",
+      "_upgrade": "三张合成精锐（真实 6 阶强度）。外援卡池按槽位阶级给份数：五阶 8 张 / 六阶 5 张，都够 3 张。⚠️ 必须显式写 upgradeNum —— 包工具默认给 0。",
+      "elite": {
+        "name": "斩业星熊",
+        "skills": [
+          {
+            "skillId": "skchr_hsgma2_1",
+            "iconId": "skchr_hsgma2_1",
+            "name": "恶业苦果",
+            "level": 7,
+            "desc": "攻击力+40%，防御力+40%，每次受到攻击时对目标造成相当于斩业星熊攻击力100%的法术伤害\n持续时间无限",
+            "descRaw": "攻击力<@ba.vup>+40%</>，防御力<@ba.vup>+40%</>，每次受到攻击时对目标造成相当于斩业星熊攻击力<@ba.vup>100%</>的法术伤害\n<@ba.rem>持续时间无限</>",
+            "isDefault": true,
+            "skillType": "AUTO",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "INCREASE_WHEN_TAKEN_DAMAGE",
+            "spCost": 15,
+            "initSp": 0,
+            "bb": {
+              "atk": 0.4,
+              "def": 0.4,
+              "atk_scale": 1
+            },
+            "trigger": {
+              "rule": "DEFAULT"
+            }
+          },
+          {
+            "skillId": "skchr_hsgma2_2",
+            "iconId": "skchr_hsgma2_2",
+            "name": "无始无明",
+            "level": 7,
+            "desc": "投出盾牌并以攻击力70%的三连击攻击所有阻挡的敌人，盾牌会环绕斩业星熊飞行一圈；盾牌碰到敌人时使目标停顿，每0.5秒对其造成攻击力110%的法术伤害，自身回复盾牌造成伤害15%的生命",
+            "descRaw": "投出盾牌并以攻击力<@ba.vup>70%</>的三连击攻击所有阻挡的敌人，盾牌会环绕斩业星熊飞行<@ba.vup>一圈</>；盾牌碰到敌人时使目标<$ba.sluggish>停顿</>，每<@ba.vup>0.5</>秒对其造成攻击力<@ba.vup>110%</>的法术伤害，自身回复盾牌造成伤害<@ba.vup>15%</>的生命",
+            "isDefault": false,
+            "skillType": "AUTO",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "INCREASE_WHEN_ATTACK",
+            "spCost": 7,
+            "initSp": 0,
+            "bb": {
+              "attack@atk_scale": 0.7,
+              "shield_atk_scale": 1.1,
+              "sluggish": 1,
+              "interval": 0.5,
+              "heal_ratio": 0.15
+            },
+            "trigger": {
+              "rule": "DEFAULT"
+            }
+          },
+          {
+            "skillId": "skchr_hsgma2_3",
+            "iconId": "skchr_hsgma2_3",
+            "name": "地狱变相",
+            "level": 7,
+            "desc": "攻击范围扩大，生命上限+70%，攻击力+180%，以二连击攻击最多2名敌人；主动关闭技能后11秒内保留技能加成且不会被击倒，攻击变为四连击，承担攻击范围内我方干员受到的致命伤害，11秒后强制退出战场\n可主动关闭（期间可随时停止技能）",
+            "descRaw": "攻击范围<@ba.vup>扩大</>，生命上限<@ba.vup>+70%</>，攻击力<@ba.vup>+180%</>，以二连击攻击最多<@ba.vup>2</>名敌人；主动关闭技能后<@ba.vup>11</>秒内保留技能加成且不会被击倒，攻击变为四连击，承担攻击范围内我方干员受到的致命伤害，<@ba.vup>11</>秒后强制退出战场\n<@ba.rem>可主动关闭（期间可随时停止技能）</>",
+            "isDefault": false,
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 32,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 50,
+            "initSp": 31,
+            "bb": {
+              "max_hp": 0.7,
+              "atk": 1.8,
+              "attack@max_target": 2,
+              "before_dead_duration": 11
+            },
+            "rangeId": "x-2",
+            "rangeGrid": [
+              [
+                2,
+                -1
+              ],
+              [
+                2,
+                0
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                1,
+                -2
+              ],
+              [
+                1,
+                -1
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                1,
+                2
+              ],
+              [
+                0,
+                -2
+              ],
+              [
+                0,
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                -1,
+                -2
+              ],
+              [
+                -1,
+                -1
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -1,
+                2
+              ],
+              [
+                -2,
+                -1
+              ],
+              [
+                -2,
+                0
+              ],
+              [
+                -2,
+                1
+              ]
+            ],
+            "trigger": {
+              "rule": "DEFAULT"
+            }
+          }
+        ],
+        "modules": [
+          {
+            "uniEquipId": "uniequip_002_hsgma2",
+            "name": "无迹",
+            "typeName": "AST-X",
+            "typeIcon": "ast-x",
+            "icon": "uniequip_002_hsgma2",
+            "isDefault": true,
+            "level": 1,
+            "attr": {
+              "maxHp": 190,
+              "atk": 55
+            },
+            "_attr": "官方「无迹」**一级**数据 = 生命190/攻击55（二级 275/70、三级 325/80）。只有生命与攻击，没有防御/法抗。⚠️ 用一级是因为包工具派生精锐固定 equipLevel=1，而测试断言 module.level === status.equipLevel。",
+            "traitOverride": {
+              "desc": "技能开启时普通攻击会造成法术伤害，且攻击和受到攻击时对目标额外造成10%攻击力的法术伤害",
+              "descRaw": "技能开启时普通攻击会造成<@ba.kw>法术伤害</>，且攻击和受到攻击时对目标额外造成<@ba.vup>10%</>攻击力的法术伤害",
+              "bb": {
+                "atk_scale": 0.1
+              },
+              "bbStr": {},
+              "rangeGrid": null,
+              "moduleDesc": "攻击和受到攻击时对目标额外造成10%攻击力的法术伤害（仅对敌方单位反弹伤害，为法术普通伤害）",
+              "moduleDescRaw": "攻击和受到攻击时对目标额外造成<@ba.vup>10%</>攻击力的法术伤害（仅对敌方单位反弹伤害，为法术普通伤害）"
+            },
+            "talentChanges": [
+              {
+                "talentIndex": 1,
+                "name": "鬼之架势",
+                "desc": "在场时，自身获得最高+50法术抗性和35%攻击力的坚忍（损失50%生命值时达到最大加成）。达到最大加成时，攻击力额外+15%",
+                "descRaw": "在场时，自身获得最高<@ba.vup>+50</>法术抗性和<@ba.vup>35%</>攻击力的<$ba.berserk>坚忍</>（损失<@ba.vup>50%</>生命值时达到最大加成）。达到最大加成时，攻击力额外<@ba.vup>+15%</>",
+                "bb": {
+                  "max_hp_ratio": 1,
+                  "min_hp_ratio": 0.5,
+                  "min_atk": 0.35,
+                  "max_atk": 0.15,
+                  "min_magic_resistance": 50,
+                  "max_magic_resistance": 0
+                },
+                "bbStr": {},
+                "hidden": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_1044_hsgma2": {
+      "name": "斩业星熊",
+      "avatar": "/assets/char/avatar/char_1044_hsgma2.webp",
+      "avatarE2": "/assets/char/avatar/char_1044_hsgma2_2.webp",
+      "portrait": "/assets/char/portrait/char_1044_hsgma2_1.webp",
+      "portraitE2": "/assets/char/portrait/char_1044_hsgma2_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_1044_hsgma2/front/char_1044_hsgma2.skel",
+          "atlas": "/assets/spine/op/char_1044_hsgma2/front/char_1044_hsgma2.atlas",
+          "textures": [
+            "/assets/spine/op/char_1044_hsgma2/front/char_1044_hsgma2.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Loop",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": "Skill_2_Idle"
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop_A",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.6,
+            "B_Attack": 1.6,
+            "B_Default": 0,
+            "B_Idle": 2.667,
+            "B_Skill_2_Begin": 0.433,
+            "B_Skill_2_End": 0.433,
+            "B_Skill_2_Idle": 2.667,
+            "B_Skill_2_Loop": 1.6,
+            "B_Skill_3_Begin": 0.333,
+            "B_Skill_3_End": 0.333,
+            "B_Skill_3_Idle": 2.667,
+            "B_Skill_3_Loop_A": 1.6,
+            "B_Skill_3_Loop_B": 1.6,
+            "B_Skill_3_Loop_C": 1.6,
+            "B_Start": 1,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 2.667,
+            "Skill_2_Begin": 0.433,
+            "Skill_2_End": 0.433,
+            "Skill_2_Idle": 2.667,
+            "Skill_2_Loop": 1.6,
+            "Skill_2_Stun": 1.333,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 2.667,
+            "Skill_3_Loop_A": 1.6,
+            "Skill_3_Loop_B": 1.6,
+            "Skill_3_Loop_C": 1.6,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.333
+            ],
+            "B_Attack": [
+              0.333
+            ],
+            "B_Skill_2_Begin": [
+              0.133
+            ],
+            "B_Skill_2_End": [
+              0
+            ],
+            "B_Skill_2_Idle": [
+              0
+            ],
+            "B_Skill_2_Loop": [
+              0.333,
+              0.5,
+              0.667
+            ],
+            "B_Skill_3_Loop_A": [
+              0.5
+            ],
+            "B_Skill_3_Loop_B": [
+              0.5
+            ],
+            "B_Skill_3_Loop_C": [
+              0.5
+            ],
+            "Skill_2_Begin": [
+              0.133
+            ],
+            "Skill_2_Loop": [
+              0.333,
+              0.5,
+              0.667
+            ],
+            "Skill_3_Loop_A": [
+              0.5
+            ],
+            "Skill_3_Loop_B": [
+              0.5
+            ],
+            "Skill_3_Loop_C": [
+              0.5
+            ]
+          },
+          "bounds": {
+            "x": -264.42,
+            "y": -58.8,
+            "width": 481.035,
+            "height": 625.73
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_1044_hsgma2/back/char_1044_hsgma2.skel",
+          "atlas": "/assets/spine/op/char_1044_hsgma2/back/char_1044_hsgma2.atlas",
+          "textures": [
+            "/assets/spine/op/char_1044_hsgma2/back/char_1044_hsgma2.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Loop",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": "Skill_2_Idle"
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop_A",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.6,
+            "Default": 0,
+            "Idle": 2.667,
+            "Skill_2_Begin": 0.433,
+            "Skill_2_End": 0.433,
+            "Skill_2_Idle": 2.667,
+            "Skill_2_Loop": 1.6,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 2.667,
+            "Skill_3_Loop_A": 1.6,
+            "Skill_3_Loop_B": 1.6,
+            "Skill_3_Loop_C": 1.6,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.333
+            ],
+            "Skill_2_Begin": [
+              0.133
+            ],
+            "Skill_2_End": [
+              0
+            ],
+            "Skill_2_Idle": [
+              0
+            ],
+            "Skill_2_Loop": [
+              0.333,
+              0.5,
+              0.667
+            ],
+            "Skill_3_Loop_A": [
+              0.5
+            ],
+            "Skill_3_Loop_B": [
+              0.5
+            ],
+            "Skill_3_Loop_C": [
+              0.5
+            ]
+          },
+          "bounds": {
+            "x": -264.42,
+            "y": -58.8,
+            "width": 726.498,
+            "height": 625.73
+          }
+        }
+      },
+      "skins": {
+        "char_1044_hsgma2#2": {
+          "name": "精英2",
+          "group": "默认服装",
+          "avatar": "/assets/char/skin_avatar/char_1044_hsgma2_2.webp"
+        },
+        "char_1044_hsgma2@whirlwind#11": {
+          "name": "一闪极意",
+          "group": "0011/飙系列/XI",
+          "avatar": "/assets/char/skin_avatar/char_1044_hsgma2_whirlwind_11.webp",
+          "spine": {
+            "front": {
+              "skel": "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/front/char_1044_hsgma2_whirlwind_11.skel",
+              "atlas": "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/front/char_1044_hsgma2_whirlwind_11.atlas",
+              "textures": [
+                "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/front/char_1044_hsgma2_whirlwind_11.webp"
+              ],
+              "pma": false,
+              "anims": {
+                "idle": "Idle",
+                "deploy": "Start",
+                "attack": {
+                  "begin": null,
+                  "loop": "Attack",
+                  "end": null
+                },
+                "attackDown": null,
+                "skill": {
+                  "begin": null,
+                  "loop": "Attack",
+                  "end": null,
+                  "via": "attack",
+                  "index": 0,
+                  "idle": null
+                },
+                "die": "Die",
+                "move": null,
+                "stun": null,
+                "skills": {
+                  "0": {
+                    "begin": null,
+                    "loop": "Attack",
+                    "end": null,
+                    "via": "attack",
+                    "index": 0,
+                    "idle": null
+                  },
+                  "1": {
+                    "begin": "Skill_2_Begin",
+                    "loop": "Skill_2_Loop",
+                    "end": "Skill_2_End",
+                    "index": 1,
+                    "idle": "Skill_2_Idle"
+                  },
+                  "2": {
+                    "begin": "Skill_3_Begin",
+                    "loop": "Skill_3_Loop_A",
+                    "end": "Skill_3_End",
+                    "index": 2,
+                    "idle": "Skill_3_Idle"
+                  }
+                }
+              }
+            },
+            "back": {
+              "skel": "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/back/char_1044_hsgma2_whirlwind_11.skel",
+              "atlas": "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/back/char_1044_hsgma2_whirlwind_11.atlas",
+              "textures": [
+                "/assets/spine/op/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/back/char_1044_hsgma2_whirlwind_11.webp"
+              ],
+              "pma": false,
+              "anims": {
+                "idle": "Idle",
+                "deploy": "Start",
+                "attack": {
+                  "begin": null,
+                  "loop": "Attack",
+                  "end": null
+                },
+                "attackDown": null,
+                "skill": {
+                  "begin": null,
+                  "loop": "Attack",
+                  "end": null,
+                  "via": "attack",
+                  "index": 0,
+                  "idle": null
+                },
+                "die": null,
+                "move": null,
+                "stun": null,
+                "skills": {
+                  "0": {
+                    "begin": null,
+                    "loop": "Attack",
+                    "end": null,
+                    "via": "attack",
+                    "index": 0,
+                    "idle": null
+                  },
+                  "1": {
+                    "begin": "Skill_2_Begin",
+                    "loop": "Skill_2_Loop",
+                    "end": "Skill_2_End",
+                    "index": 1,
+                    "idle": "Skill_2_Idle"
+                  },
+                  "2": {
+                    "begin": "Skill_3_Begin",
+                    "loop": "Skill_3_Loop_A",
+                    "end": "Skill_3_End",
+                    "index": 2,
+                    "idle": "Skill_3_Idle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

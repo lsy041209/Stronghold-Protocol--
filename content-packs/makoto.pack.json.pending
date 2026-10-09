@@ -1,0 +1,1229 @@
+{
+  "_README": "结城理（char_4217_makoto）—— SPECIAL/dollkeeper，外援干员。数据取自 simpfun 参照（`.workbuddy/simpfun-ref/`），不凭印象。",
+  "_pendingWhy": "内容包工具只加载 *.json。本文件故意带 .pending：**数据已就位，但该干员的 kit 还没实现**。AGENTS §十.2 要求\"每引入一位新干员就按官方口径做完整（技能/天赋/召唤物/范围/数值/素材引用）\"⇒ 只有数据没有 kit 的是半成品 ⇒ 做完 kit + 探针后用 `--enable` 去掉 .pending 再启用。",
+  "_来源": "simpfun 参照 `.workbuddy/simpfun-ref/data_chess.json`（只读固化）；字段投影规则见 `.workbuddy/tools/a7-gen-reserve-packs.mjs`。",
+  "_待做": [
+    "kit：server/sim/content/kits/reserve-makoto.js（并在 kits/reserve.js 里接线）",
+    "每条技能一条\"先红后绿\"探针（AGENTS §三）",
+    "素材引用：avatar / portrait / spine / skillIcon 四条在磁盘上真的存在（b-verify-asset-refs.mjs）",
+    "skillIcon 的名字可能落在未落盘的 `<skill>` 上 ⇒ 跑素材引用判据"
+  ],
+  "pack": "makoto",
+  "version": 1,
+  "targetBase": "0.1.6",
+  "note": "结城理（外援）—— dollkeeper（kit 待实现）",
+  "chess": [
+    {
+      "tier": 6,
+      "isHidden": false,
+      "visible": false,
+      "charId": "char_4217_makoto",
+      "name": "结城理",
+      "appellation": "Makoto Yuki",
+      "rarity": 6,
+      "profession": "SPECIAL",
+      "subProfessionId": "dollkeeper",
+      "subProfessionName": null,
+      "position": "MELEE",
+      "nationId": null,
+      "bonds": [
+        "lateranoShip"
+      ],
+      "garrisonIds": [],
+      "price": 4,
+      "sellPrice": 1,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_makoto_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 2215,
+        "atk": 677,
+        "def": 253,
+        "res": 0,
+        "cost": 14,
+        "blockCnt": 2,
+        "bat": 1.2,
+        "aspd": 100,
+        "respawnTime": 70,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "rangeId": "1-1",
+      "rangeGrid": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "dmgType": "phys",
+      "attackKind": "melee",
+      "projectile": "none",
+      "canHitFly": false,
+      "targetPriority": null,
+      "trait": {
+        "desc": "受到致命伤时不撤退，切换成<替身>作战（替身阻挡数为0），持续20秒后自身再次替换<替身>",
+        "descRaw": "受到致命伤时不撤退，切换成<替身>作战（替身阻挡数为0），持续20秒后自身再次替换<替身>",
+        "bb": {
+          "duration": 20
+        },
+        "bbStr": {},
+        "rangeGrid": [
+          [
+            2,
+            0
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            0,
+            -2
+          ],
+          [
+            0,
+            -1
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -2,
+            0
+          ]
+        ]
+      },
+      "skill": {
+        "skillId": "skchr_makoto_3",
+        "iconId": "skchr_makoto_3",
+        "name": "开辟明日的剑刃",
+        "level": 4,
+        "desc": "被动：<替身>状态初始召唤塔纳托斯，攻击速度+30，攻击对至多3名敌人造成攻击力170%的弱点伤害，塔纳托斯在场时，开启技能或受到致命伤时改为召唤俄耳甫斯，阻挡数+2，使范围内友方干员获得30%的物理与法术闪避并每秒治疗范围内最多3名友方干员相当于结城理攻击力25%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+        "descRaw": "被动：<替身>状态初始召唤<@ba.vup>塔纳托斯</>，攻击速度<@ba.vup>+30</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力<@ba.vup>170%</>的<$ba.weaknessatk>弱点伤害</>，<@ba.vup>塔纳托斯</>在场时，开启技能或受到致命伤时改为召唤<@ba.vup>俄耳甫斯</>，阻挡数<@ba.vup>+2</>，使范围内友方干员获得<@ba.vup>30%</>的物理与法术闪避并每秒治疗范围内最多<@ba.vup>3</>名友方干员相当于结城理攻击力<@ba.vup>25%</>的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 0,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 20,
+        "initSp": 5,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "talent@attack_speed": 30,
+          "attack@atk_scale": 1.7,
+          "attack@heal_scale": 0.25,
+          "attack@interval": 1,
+          "attack@prob": 0.3,
+          "attack@max_target": 3,
+          "attack@max_target_heal": 3,
+          "attack@block_cnt": 2
+        },
+        "bbStr": {},
+        "rangeId": "x-1",
+        "rangeGrid": [
+          [
+            2,
+            0
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            0,
+            -2
+          ],
+          [
+            0,
+            -1
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -2,
+            0
+          ]
+        ],
+        "prefabId": "skchr_makoto_3",
+        "trigger": {
+          "rule": "DEFAULT",
+          "rawRule": "DEFAULT"
+        },
+        "index": 2,
+        "overrideTokenKey": null,
+        "adaptationNote": "替身中自动处理塔纳托斯与俄耳甫斯切换；回复、闪避与总攻击按网页版范围判定。"
+      },
+      "talents": [
+        {
+          "index": 0,
+          "name": "不羁之力",
+          "desc": "结城理切换为<替身>状态时停顿周围一定范围内敌人8秒；<替身>状态下结城理召唤人格面具作战，攻击间隔增大，攻击力+85%（+5%），生命值+35%，作战能力随技能选择而改变",
+          "descRaw": "结城理切换为<替身>状态时<$ba.sluggish>停顿</>周围一定范围内敌人8秒；<替身>状态下结城理召唤人格面具作战，攻击间隔增大，攻击力+85%<@ba.talpu>（+5%）</>，生命值+35%，作战能力随技能选择而改变",
+          "bb": {
+            "atk": 0.85,
+            "base_attack_time": 0.4,
+            "sluggish": 8,
+            "max_hp_t1": 0.35
+          },
+          "bbStr": {
+            "range_id": "x-1"
+          },
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        },
+        {
+          "index": 1,
+          "name": "S.E.E.S.队长",
+          "desc": "结城理<替身>状态结束后，带领S.E.E.S.小队发动总攻击，对S.E.E.S.小队队员周围一定范围内的所有敌人造成相当于结城理攻击力450%（+20%）的真实伤害（可叠加）",
+          "descRaw": "结城理<替身>状态结束后，带领<$ba.sees>S.E.E.S.</>小队发动总攻击，对<$ba.sees>S.E.E.S.</>小队队员周围一定范围内的所有敌人造成相当于结城理攻击力450%<@ba.talpu>（+20%）</>的真实伤害（可叠加）",
+          "bb": {
+            "atk_scale": 4.5,
+            "multi_attack_total_cnt": 1,
+            "final_damage_different_ratio": 1
+          },
+          "bbStr": {
+            "range_id": "x-1"
+          },
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        }
+      ],
+      "tokens": [],
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_4217_makoto",
+        "portrait": "char_4217_makoto_1",
+        "spine": "char_4217_makoto",
+        "skillIcon": "skchr_makoto_3",
+        "subProfIcon": "sub_dollkeeper_icon"
+      },
+      "skills": [
+        {
+          "skillId": "skchr_makoto_1",
+          "iconId": "skchr_makoto_1",
+          "name": "俄耳甫斯的竖琴",
+          "level": 4,
+          "desc": "被动：<替身>状态召唤俄耳甫斯，攻击对敌人造成攻击力150%的法术伤害，范围内有生命值低于50%的友方干员时，改为对其治疗相当于结城理攻击力40%的生命值\n主动：立即切换为<替身>状态作战",
+          "descRaw": "被动：<替身>状态召唤<@ba.vup>俄耳甫斯</>，攻击对敌人造成攻击力<@ba.vup>150%</>的法术伤害，范围内有生命值低于<@ba.vup>50%</>的友方干员时，改为对其治疗相当于结城理攻击力<@ba.vup>40%</>的生命值\n主动：立即切换为<替身>状态作战",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 0,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 14,
+          "initSp": 0,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "attack@atk_scale": 1.5,
+            "attack@heal_scale": 0.4
+          },
+          "bbStr": {},
+          "rangeId": "x-1",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          "prefabId": "skchr_makoto_1",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 0,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "自动切换俄耳甫斯替身，优先治疗范围内生命值低于一半的友军。"
+        },
+        {
+          "skillId": "skchr_makoto_2",
+          "iconId": "skchr_makoto_2",
+          "name": "塔纳托斯的囚锁",
+          "level": 4,
+          "desc": "被动：<替身>状态召唤塔纳托斯，攻击对至多3名敌人造成攻击力160%的法术伤害并有35%概率恐惧敌人1.5秒，范围内恐惧中的敌人若生命值低于结城理攻击力的230%则立刻倒下\n主动：立即切换为<替身>状态作战",
+          "descRaw": "被动：<替身>状态召唤<@ba.vup>塔纳托斯</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力<@ba.vup>160%</>的法术伤害并有<@ba.vup>35%</>概率<$ba.fear>恐惧</>敌人<@ba.vup>1.5</>秒，范围内<$ba.fear>恐惧</>中的敌人若生命值低于结城理攻击力的<@ba.vup>230%</>则立刻倒下\n主动：立即切换为<替身>状态作战",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 0,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 18,
+          "initSp": 3,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "attack@max_target": 3,
+            "attack@atk_scale": 1.6,
+            "attack@prob": 0.35,
+            "attack@fear": 1.5,
+            "attack@kill_atk_scale": 2.3,
+            "attack@kill_damage": 9999999
+          },
+          "bbStr": {},
+          "rangeId": "x-1",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          "prefabId": "skchr_makoto_2",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 1,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "自动切换塔纳托斯替身并恐惧目标；处决目前在自身攻击命中时判定。"
+        },
+        {
+          "skillId": "skchr_makoto_3",
+          "iconId": "skchr_makoto_3",
+          "name": "开辟明日的剑刃",
+          "level": 4,
+          "desc": "被动：<替身>状态初始召唤塔纳托斯，攻击速度+30，攻击对至多3名敌人造成攻击力170%的弱点伤害，塔纳托斯在场时，开启技能或受到致命伤时改为召唤俄耳甫斯，阻挡数+2，使范围内友方干员获得30%的物理与法术闪避并每秒治疗范围内最多3名友方干员相当于结城理攻击力25%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+          "descRaw": "被动：<替身>状态初始召唤<@ba.vup>塔纳托斯</>，攻击速度<@ba.vup>+30</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力<@ba.vup>170%</>的<$ba.weaknessatk>弱点伤害</>，<@ba.vup>塔纳托斯</>在场时，开启技能或受到致命伤时改为召唤<@ba.vup>俄耳甫斯</>，阻挡数<@ba.vup>+2</>，使范围内友方干员获得<@ba.vup>30%</>的物理与法术闪避并每秒治疗范围内最多<@ba.vup>3</>名友方干员相当于结城理攻击力<@ba.vup>25%</>的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 0,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 20,
+          "initSp": 5,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "talent@attack_speed": 30,
+            "attack@atk_scale": 1.7,
+            "attack@heal_scale": 0.25,
+            "attack@interval": 1,
+            "attack@prob": 0.3,
+            "attack@max_target": 3,
+            "attack@max_target_heal": 3,
+            "attack@block_cnt": 2
+          },
+          "bbStr": {},
+          "rangeId": "x-1",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          "prefabId": "skchr_makoto_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": null,
+          "isDefault": true,
+          "adaptationNote": "替身中自动处理塔纳托斯与俄耳甫斯切换；回复、闪避与总攻击按网页版范围判定。"
+        }
+      ],
+      "isReserve": true,
+      "chessId": "chess_makoto_a",
+      "elite": {
+        "_elite": "精锐（= 精 2 ＋ **专三**那一档 ＋ Y 模组「彼此的声音」）：技能数值取官方专精三（PRTS 结城理 技能节），desc/descRaw 的数字同步改；模组用官方 uniequip_002_makoto（attr = 1 级总加成；traitOverride 给替身 +20% 生命）。由 `a52-makoto-elite.mjs` 生成，**别手改**。",
+        "name": "结城理",
+        "skills": [
+          {
+            "skillId": "skchr_makoto_1",
+            "iconId": "skchr_makoto_1",
+            "name": "俄耳甫斯的竖琴",
+            "level": 4,
+            "desc": "被动：<替身>状态召唤俄耳甫斯，攻击对敌人造成攻击力280%的法术伤害，范围内有生命值低于50%的友方干员时，改为对其治疗相当于结城理攻击力60%的生命值\n主动：立即切换为<替身>状态作战",
+            "descRaw": "被动：<替身>状态召唤<@ba.vup>俄耳甫斯</>，攻击对敌人造成攻击力280%的法术伤害，范围内有生命值低于<@ba.vup>50%</>的友方干员时，改为对其治疗相当于结城理攻击力60%的生命值\n主动：立即切换为<替身>状态作战",
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 0,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 14,
+            "initSp": 0,
+            "maxChargeTime": 1,
+            "increment": 1,
+            "bb": {
+              "attack@atk_scale": 2.8,
+              "attack@heal_scale": 0.6
+            },
+            "bbStr": {},
+            "rangeId": "x-1",
+            "rangeGrid": [
+              [
+                2,
+                0
+              ],
+              [
+                1,
+                -1
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                -2
+              ],
+              [
+                0,
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                -1,
+                -1
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -2,
+                0
+              ]
+            ],
+            "prefabId": "skchr_makoto_1",
+            "trigger": {
+              "rule": "DEFAULT",
+              "rawRule": "DEFAULT"
+            },
+            "index": 0,
+            "overrideTokenKey": null,
+            "isDefault": false,
+            "adaptationNote": "自动切换俄耳甫斯替身，优先治疗范围内生命值低于一半的友军。"
+          },
+          {
+            "skillId": "skchr_makoto_2",
+            "iconId": "skchr_makoto_2",
+            "name": "塔纳托斯的囚锁",
+            "level": 4,
+            "desc": "被动：<替身>状态召唤塔纳托斯，攻击对至多3名敌人造成攻击力250%的法术伤害并有35%概率恐惧敌人1.5秒，范围内恐惧中的敌人若生命值低于结城理攻击力的280%则立刻倒下\n主动：立即切换为<替身>状态作战",
+            "descRaw": "被动：<替身>状态召唤<@ba.vup>塔纳托斯</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力250%的法术伤害并有<@ba.vup>35%</>概率<$ba.fear>恐惧</>敌人<@ba.vup>1.5</>秒，范围内<$ba.fear>恐惧</>中的敌人若生命值低于结城理攻击力的280%</>则立刻倒下\n主动：立即切换为<替身>状态作战",
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 0,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 18,
+            "initSp": 3,
+            "maxChargeTime": 1,
+            "increment": 1,
+            "bb": {
+              "attack@max_target": 3,
+              "attack@atk_scale": 2.5,
+              "attack@prob": 0.35,
+              "attack@fear": 1.5,
+              "attack@kill_atk_scale": 2.8,
+              "attack@kill_damage": 9999999
+            },
+            "bbStr": {},
+            "rangeId": "x-1",
+            "rangeGrid": [
+              [
+                2,
+                0
+              ],
+              [
+                1,
+                -1
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                -2
+              ],
+              [
+                0,
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                -1,
+                -1
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -2,
+                0
+              ]
+            ],
+            "prefabId": "skchr_makoto_2",
+            "trigger": {
+              "rule": "DEFAULT",
+              "rawRule": "DEFAULT"
+            },
+            "index": 1,
+            "overrideTokenKey": null,
+            "isDefault": false,
+            "adaptationNote": "自动切换塔纳托斯替身并恐惧目标；处决目前在自身攻击命中时判定。"
+          },
+          {
+            "skillId": "skchr_makoto_3",
+            "iconId": "skchr_makoto_3",
+            "name": "开辟明日的剑刃",
+            "level": 4,
+            "desc": "被动：<替身>状态初始召唤塔纳托斯，攻击速度+60，攻击对至多3名敌人造成攻击力230%的弱点伤害，塔纳托斯在场时，开启技能或受到致命伤时改为召唤俄耳甫斯，阻挡数+2，使范围内友方干员获得40%的物理与法术闪避并每秒治疗范围内最多4名友方干员相当于结城理攻击力35%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+            "descRaw": "被动：<替身>状态初始召唤<@ba.vup>塔纳托斯</>，攻击速度+60</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力230%的<$ba.weaknessatk>弱点伤害</>，<@ba.vup>塔纳托斯</>在场时，开启技能或受到致命伤时改为召唤<@ba.vup>俄耳甫斯</>，阻挡数<@ba.vup>+2</>，使范围内友方干员获得40%的物理与法术闪避并每秒治疗范围内最多4名友方干员相当于结城理攻击力35%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 0,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 20,
+            "initSp": 5,
+            "maxChargeTime": 1,
+            "increment": 1,
+            "bb": {
+              "talent@attack_speed": 60,
+              "attack@atk_scale": 2.3,
+              "attack@heal_scale": 0.35,
+              "attack@interval": 1,
+              "attack@prob": 0.3,
+              "attack@max_target": 3,
+              "attack@max_target_heal": 4,
+              "attack@block_cnt": 2
+            },
+            "bbStr": {},
+            "rangeId": "x-1",
+            "rangeGrid": [
+              [
+                2,
+                0
+              ],
+              [
+                1,
+                -1
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                -2
+              ],
+              [
+                0,
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                -1,
+                -1
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -2,
+                0
+              ]
+            ],
+            "prefabId": "skchr_makoto_3",
+            "trigger": {
+              "rule": "DEFAULT",
+              "rawRule": "DEFAULT"
+            },
+            "index": 2,
+            "overrideTokenKey": null,
+            "isDefault": true,
+            "adaptationNote": "替身中自动处理塔纳托斯与俄耳甫斯切换；回复、闪避与总攻击按网页版范围判定。"
+          }
+        ],
+        "skill": {
+          "skillId": "skchr_makoto_3",
+          "iconId": "skchr_makoto_3",
+          "name": "开辟明日的剑刃",
+          "level": 4,
+          "desc": "被动：<替身>状态初始召唤塔纳托斯，攻击速度+60，攻击对至多3名敌人造成攻击力230%的弱点伤害，塔纳托斯在场时，开启技能或受到致命伤时改为召唤俄耳甫斯，阻挡数+2，使范围内友方干员获得40%的物理与法术闪避并每秒治疗范围内最多4名友方干员相当于结城理攻击力35%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+          "descRaw": "被动：<替身>状态初始召唤<@ba.vup>塔纳托斯</>，攻击速度+60</>，攻击对至多<@ba.vup>3</>名敌人造成攻击力230%的<$ba.weaknessatk>弱点伤害</>，<@ba.vup>塔纳托斯</>在场时，开启技能或受到致命伤时改为召唤<@ba.vup>俄耳甫斯</>，阻挡数<@ba.vup>+2</>，使范围内友方干员获得40%的物理与法术闪避并每秒治疗范围内最多4名友方干员相当于结城理攻击力35%的生命值，直到<替身>状态结束\n主动：立即切换为<替身>状态作战",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 0,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 20,
+          "initSp": 5,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "talent@attack_speed": 60,
+            "attack@atk_scale": 2.3,
+            "attack@heal_scale": 0.35,
+            "attack@interval": 1,
+            "attack@prob": 0.3,
+            "attack@max_target": 3,
+            "attack@max_target_heal": 4,
+            "attack@block_cnt": 2
+          },
+          "bbStr": {},
+          "rangeId": "x-1",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          "prefabId": "skchr_makoto_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": null,
+          "adaptationNote": "替身中自动处理塔纳托斯与俄耳甫斯切换；回复、闪避与总攻击按网页版范围判定。"
+        },
+        "modules": [
+          {
+            "_note": "Y 模组「彼此的声音」：官方 uniequip_002_makoto / PUM-Y；attr 与 traitOverride 取自 battle_equip_table.json；1 级无天赋改动（talentChanges = []）；traitOverride 里额外带上本体的 rangeGrid/bbStr，否则 `<替身>` 的 x-1 生效范围会从精锐身上丢掉（官方那边 rangeId 是 null，走的是\"能力生效范围\"字段）。",
+            "uniEquipId": "uniequip_002_makoto",
+            "name": "彼此的声音",
+            "typeName": "PUM-Y",
+            "level": 1,
+            "isDefault": true,
+            "attr": {
+              "maxHp": 200,
+              "atk": 18,
+              "def": 18
+            },
+            "talentChanges": [],
+            "traitOverride": {
+              "desc": "受到致命伤时不撤退，切换成<替身>作战（替身阻挡数为0但生命值提升），持续20秒后自身再次替换<替身>",
+              "descRaw": "受到致命伤时不撤退，切换成<替身>作战（替身阻挡数为0但生命值<@ba.kw>提升</>），持续20秒后自身再次替换<替身>",
+              "bb": {
+                "duration": 20,
+                "max_hp": 0.2
+              },
+              "bbStr": {},
+              "rangeGrid": [
+                [
+                  2,
+                  0
+                ],
+                [
+                  1,
+                  -1
+                ],
+                [
+                  1,
+                  0
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  0,
+                  -2
+                ],
+                [
+                  0,
+                  -1
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1
+                ],
+                [
+                  0,
+                  2
+                ],
+                [
+                  -1,
+                  -1
+                ],
+                [
+                  -1,
+                  0
+                ],
+                [
+                  -1,
+                  1
+                ],
+                [
+                  -2,
+                  0
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_4217_makoto": {
+      "avatar": "/assets/char/avatar/char_4217_makoto.webp",
+      "avatarE2": "/assets/char/avatar/char_4217_makoto_2.webp",
+      "portrait": "/assets/char/portrait/char_4217_makoto_1.webp",
+      "portraitE2": "/assets/char/portrait/char_4217_makoto_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_4217_makoto/front/char_4217_makoto.skel",
+          "atlas": "/assets/spine/op/char_4217_makoto/front/char_4217_makoto.atlas",
+          "textures": [
+            "/assets/spine/op/char_4217_makoto/front/char_4217_makoto.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": "Doll_Skill_1_Die",
+            "move": null,
+            "stun": {
+              "begin": null,
+              "loop": "Stun",
+              "end": null
+            },
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 2,
+                "idle": null
+              }
+            }
+          },
+          "animations": {
+            "Attack_A": 1.2,
+            "Attack_B": 1.2,
+            "Default": 0,
+            "Doll_Skill_1_Attack": 1.8,
+            "Doll_Skill_1_Die": 1,
+            "Doll_Skill_1_Idle": 2,
+            "Doll_Skill_1_Stun": 1,
+            "Doll_Skill_1_SwitchIn": 1,
+            "Doll_Skill_1_SwitchOut": 1,
+            "Doll_Skill_2_Die": 1,
+            "Doll_Skill_2_Loop": 2,
+            "Doll_Skill_2_Stun": 1,
+            "Doll_Skill_2_SwitchIn": 1,
+            "Doll_Skill_2_SwitchOut": 1,
+            "Doll_Skill_3_P1_Attack_A": 1.8,
+            "Doll_Skill_3_P1_Attack_B": 1.8,
+            "Doll_Skill_3_P1_Idle": 2,
+            "Doll_Skill_3_P1_Stun": 1,
+            "Doll_Skill_3_P1_SwitchIn": 1,
+            "Doll_Skill_3_P1_SwitchOut": 1,
+            "Doll_Skill_3_P1toP2_ChangeBegin": 0.5,
+            "Doll_Skill_3_P1toP2_ChangeEnd": 1,
+            "Doll_Skill_3_P2_Die": 1,
+            "Doll_Skill_3_P2_Loop": 2,
+            "Doll_Skill_3_P2_Stun": 1,
+            "Doll_Skill_3_P2_SwitchOut": 1,
+            "Idle": 12,
+            "Skill_AllOutAttack_End": 1.433,
+            "Skill_AllOutAttack_Loop": 0.167,
+            "Start": 1,
+            "Stun": 1,
+            "SwitchOut": 1
+          },
+          "events": [
+            "OnActivateEffect",
+            "OnAttack",
+            "OnDeactivateEffect",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_A": [
+              0.533
+            ],
+            "Attack_B": [
+              0.533
+            ],
+            "Doll_Skill_1_Attack": [
+              0.8
+            ],
+            "Doll_Skill_3_P1_Attack_A": [
+              0.8
+            ],
+            "Doll_Skill_3_P1_Attack_B": [
+              0.8
+            ],
+            "Doll_Skill_3_P1toP2_ChangeEnd": [
+              0.8
+            ],
+            "Skill_AllOutAttack_End": [
+              0.133
+            ]
+          },
+          "bounds": null
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_4217_makoto/back/char_4217_makoto.skel",
+          "atlas": "/assets/spine/op/char_4217_makoto/back/char_4217_makoto.atlas",
+          "textures": [
+            "/assets/spine/op/char_4217_makoto/back/char_4217_makoto.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": null,
+                "loop": "Attack_A",
+                "end": null,
+                "via": "attack",
+                "index": 2,
+                "idle": null
+              }
+            }
+          },
+          "animations": {
+            "Attack_A": 1.2,
+            "Attack_B": 1.2,
+            "Default": 0,
+            "Doll_Skill_1_Attack": 1.8,
+            "Doll_Skill_1_Idle": 2,
+            "Doll_Skill_2_Loop": 2,
+            "Doll_Skill_3_P1_Attack_A": 1.8,
+            "Doll_Skill_3_P1_Attack_B": 1.8,
+            "Doll_Skill_3_P1_Idle": 2,
+            "Idle": 12,
+            "Start": 1
+          },
+          "events": [
+            "OnActivateEffect",
+            "OnAttack",
+            "OnDeactivateEffect",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_A": [
+              0.533
+            ],
+            "Attack_B": [
+              0.533
+            ],
+            "Doll_Skill_1_Attack": [
+              0.8
+            ],
+            "Doll_Skill_3_P1_Attack_A": [
+              0.8
+            ],
+            "Doll_Skill_3_P1_Attack_B": [
+              0.8
+            ]
+          },
+          "bounds": null
+        }
+      }
+    }
+  }
+}

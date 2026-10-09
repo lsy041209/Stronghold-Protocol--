@@ -101,7 +101,7 @@ function belloneDash(battle, unit) {
 }
 
 /** 三技能正在运行？（`重新选取目标` / `受到致命伤害` 两条细则只在技能期间生效） */
-const belloneS3Active = (unit) => !!unit && unit.alive && unit.deployed && unit.skill && unit.skill.active && unit.skill.id === 'skchr_bellone_3';
+const belloneS3Active = (unit) => !!unit && unit.alive && unit.deployed && unit.skill && unit.skill.active && unit.skill.id === 'skchr_demetr_3';
 
 /** 敌人的等级（`NORMAL` / `ELITE` / `BOSS`）。战斗单位本身没有 rank，等级在它的数据记录 `def` 上（simdata.js）。 */
 const belloneRank = (e) => String((e && (e.def?.rank || e.rank)) || 'NORMAL').toUpperCase();
@@ -409,7 +409,8 @@ export default {
               && (a.def.bonds || []).includes('lateranoShip') && a.skill && a.skill.kind === 'ammo');
             const pick = battle.rng.pick(pool);
             if (!pick) return;
-            (pick.mem.insiderAmmo ??= new Map()).set(unit.id, { src: unit, seq, n: allyAmmo });
+            if (pick.mem.insiderAmmo == null) pick.mem.insiderAmmo = new Map();
+            pick.mem.insiderAmmo.set(unit.id, { src: unit, seq, n: allyAmmo });
             battle.fx('buff', { x: pick.x, y: pick.y, id: pick.id, kind: 'ammo' });
           }, { owner: unit });
         }, { owner: unit });
@@ -541,10 +542,17 @@ export default {
     return {
       skills: { 'skcom_magic_rage[3]': { kind: 'duration', mods: { aspd: num(skillBbOf(chess, 'skcom_magic_rage[3]').attack_speed) } } },
       trait: {
-        afterHit(battle, u, target, info) {
-          if (!(info.dealt > 0)) return;
-          const ally = protege(u) ?? battle.lowestHpAllyInRange(u);
-          if (ally) battle.heal(u, ally, info.dealt * (u.profile.healRatio ?? 0.5), { tags: ['incantation'] });
+        // 咒愈师 trait: EVERY damage she deals heals an ally for 50 % of it (professions.js `installIncantation`,
+        // buff_template_data `vendla_tr` = ON_AFTER_OUTPUT_DAMAGE) — while 荆藤庇荫 runs her S2 says "仅对该角色触发刺玫
+        // 特性", so her protégé is the target then; otherwise it is the lowest-HP ally in range.
+        install(battle, u) {
+          battle.on('damaged', (c) => {
+            const t = c.target;
+            if (c.source !== u || !u.alive || !t || t.side !== 'enemy' || !(c.amount > 0)) return;
+            if (c.type === 'element' || c.type === 'elemental') return;
+            const ally = (c.dmg && c.dmg.traitAlly) || protege(u) || battle.lowestHpAllyInRange(u);
+            if (ally) battle.heal(u, ally, c.amount * (u.profile.healRatio ?? 0.5), { tags: ['incantation'] });
+          }, { owner: u });
         },
       },
       skill: {
@@ -566,9 +574,10 @@ export default {
         battle.on('damaged', (ctx) => {
           const p = protege(unit);
           if (!p || ctx.target !== p || !byEnemyAttack(ctx) || !ctx.source.alive || !unit.canAct) return;
-          const dealt = battle.dealDamage(unit, ctx.source, { amount: unit.s.atk * num(bb.atk_scale), type: 'arts', isSkill: true, canDodge: false, tags: ['counter'] });
+          // "并仅对该角色触发刺玫特性": this counter damage is healed by the trait (install above) for the protégé — the
+          // damage instance names her, so no separate heal here (it would double)
+          battle.dealDamage(unit, ctx.source, { amount: unit.s.atk * num(bb.atk_scale), type: 'arts', isSkill: true, canDodge: false, tags: ['counter'], traitAlly: p });
           battle.fx('counter', { x: ctx.source.x, y: ctx.source.y, id: unit.id });
-          if (dealt > 0) battle.heal(unit, p, dealt * (unit.profile.healRatio ?? 0.5), { tags: ['incantation'] });
         }, { owner: unit });
         if (hs !== 1) {
           let cacheT = -1, top = null;
@@ -958,7 +967,6 @@ export default {
   // hp_recovery_per_sec_by_max_hp_ratio × max HP per second (the 生命回复速度 attribute: works under her 武者 no-heal).
   chess_char_1_18_a: (bb, chess) => {
     const t = talentBb(chess, 0);
-    const buffKey = 'utage:s2';
     const s1 = skillBbOf(chess, 'skchr_utage_1');
     return {
       skills: {
@@ -970,16 +978,16 @@ export default {
         },
       },
       skill: {
-        kind: 'passive',
+        kind: 'duration', activateOnDeploy: true, duration: num(bb.duration), spCost: 0, spType: 'none', trigger: 'NEVER',
+        mods: { atkPct: num(bb.atk) },
         onStart({ battle, unit }) {
           const loss = unit.hp * num(bb.hp_ratio);
           if (loss > 0 && unit.hp - loss >= 1) battle.loseHp(unit, loss, { source: unit });
-          battle.addBuff(unit, { key: buffKey, duration: num(bb.duration), mods: { atkPct: num(bb.atk) }, tags: ['skill'], visible: true });
           battle.fx('aoe', { x: unit.x, y: unit.y, radius: 1, id: unit.id, skill: 'breach' });
         },
       },
       talents: [{ install(battle, unit) {
-        onHitBy(battle, unit, ({ dmg }) => { if (dmg.isAttack && dmg.type === 'phys' && unit.findBuff(buffKey)) dmg.type = 'arts'; });
+        onHitBy(battle, unit, ({ dmg }) => { if (dmg.isAttack && dmg.type === 'phys' && unit.skill?.id === 'skchr_utage_2' && unit.skill.active) dmg.type = 'arts'; });
         const maxAs = num(t.min_attack_speed), minHp = num(t.min_hp_ratio);
         if (maxAs > 0 && minHp < 1) {
           battle.on('tick', () => {
@@ -1022,11 +1030,8 @@ export default {
     return {
       skills: {
         skchr_wildmn_1: {
-          kind: 'passive',
-          onStart({ battle, unit }) {
-            const d = num(r1?.duration);
-            if (d > 0) battle.addBuff(unit, { key: 'wildmn:s1', duration: d, mods: { aspd: num(r1?.bb?.attack_speed) }, tags: ['skill'], visible: true });
-          },
+          kind: 'duration', activateOnDeploy: true, duration: num(r1?.duration), spCost: 0, spType: 'none', trigger: 'NEVER',
+          mods: { aspd: num(r1?.bb?.attack_speed) },
         },
       },
       skill: {
@@ -1155,18 +1160,18 @@ export default {
     const dodge = num(t1.prob, 0.4);
     const deployDodge = num(t1.deploy_prob, 0.8);
     const deployDur = num(t1.deploy_duration, 20);
-    const s1 = skillBbOf(chess, 'skchr_bellone_1');
-    const s2 = skillBbOf(chess, 'skchr_bellone_2');
-    const s3 = skillBbOf(chess, 'skchr_bellone_3');
+    const s1 = skillBbOf(chess, 'skchr_demetr_1');
+    const s2 = skillBbOf(chess, 'skchr_demetr_2');
+    const s3 = skillBbOf(chess, 'skchr_demetr_3');
     // 二技能 军师的手段: "技能期间第一天赋使目标防御力降低的效果改为最多叠加 8 次，并且叠满后对目标造成持续的停顿效果"
     const s2Stacks = Math.max(maxStacks, 8);
     return {
       skills: {
-        skchr_bellone_1: {
+        skchr_demetr_1: {
           kind: 'instant',
           attack: { atkScale: num(s1['attack@atk_scale'], 1.8), hits: Math.max(1, Math.floor(num(s1['attack@times'], 2))) },
         },
-        skchr_bellone_2: {
+        skchr_demetr_2: {
           kind: 'duration', duration: num(s2.duration, 15),
           mods: { aspd: num(s2.attack_speed, 40) },
           // 官方 技能范围=3-13（含自身、面朝方向 4×3 去四角，共 8 格）由数据给出：选中 S2 时 def.skill.rangeGrid 即该网格
@@ -1175,7 +1180,7 @@ export default {
           onStart({ unit: u }) { u.mem.belloneS2 = true; },
           onEnd({ unit: u }) { u.mem.belloneS2 = false; },
         },
-        skchr_bellone_3: {
+        skchr_demetr_3: {
           kind: 'duration', duration: num(s3.duration, 30),
           mods: { atkPct: num(s3.atk, 1.4), aspd: num(s3.attack_speed, 40) },
           onHit({ battle, unit, target, dealt }) {

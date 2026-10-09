@@ -232,14 +232,21 @@ test('a hidden-tab backlog still beyond HELD_MAX after compaction: the first fra
   r.runner.dispose();
 });
 
-test('screens/game.js buffers the form fx with the state-bearing events it replays when a field is entered late', () => {
+test('screens/battleFrames.js（game.js 现在只 import 它）buffers the form fx with the state-bearing events it replays when a field is entered late', () => {
   const src = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
-  assert.match(src, /const keepEarly = \(e\) => Array\.isArray\(e\) && \(STATE_EV\.has\(e\[0\]\) \|\| fxForm\(e\) !== undefined\);/);
-  assert.match(src, /for \(const e of msg\.ev\) if \(keepEarly\(e\)\) buf\.push\(e\);/);
-  // a new m.field for the field on screen buffers its frames until the enter effect re-enters it (enterBattle resets)
-  assert.match(src, /if \(msg\.fieldId === lastFieldRef\.current\) reentryRef\.current = msg\.fieldId;/);
-  assert.match(src, /const onEv = \(msg\) => \{\s+const cur = shownId\(\);/);
+  const frames = readFileSync(path.join(ROOT, 'public/js/screens/battleFrames.js'), 'utf8');
+  const early = readFileSync(path.join(ROOT, 'public/js/screens/game/early.js'), 'utf8');
+  assert.match(early, /const keepEarly = \(e\) => Array\.isArray\(e\) && \(STATE_EV\.has\(e\[0\]\) \|\| fxForm\(e\) !== undefined\);/);
+  // 🔴 2026-10-08 B12（C 16:0x 裁决 B-α「整段换过去」）：帧接线的**实现**从 game.js 搬进 battleFrames.js
+  //    （生产路径现在真的跑它；换之前它是孤儿、`runner.wangMarks()` 从没被调用过）⇒ 这三条锚点**跟着搬家**。
+  //    ⚠️ 不跟着搬就会红，而那是**判据滞后**、不是功能丢了（功能由 `test/render/battleFrames.test.js` 真跑着）。
+  assert.match(frames, /for \(const e of msg\.ev\) if \(keepEarly\(e\)\) buf\.push\(e\);/);
+  assert.match(frames, /if \(msg\.fieldId === lastFieldRef\.current\) reentryRef\.current = msg\.fieldId;/);
+  assert.match(frames, /const onEv = \(msg\) => \{\s+const cur = shownId\(\);/);
   assert.match(src, /lastFieldRef\.current = field\.fieldId;\s+reentryRef\.current = null;/);
+  // 🆕 生产路径**真的挂着它**（B-α 之前：0 调用点）—— 光有模块不算，得有人 import ＋ 传 runner
+  assert.match(src, /import \{ createBattleFrames \} from '\.\/battleFrames\.js';/);
+  assert.match(src, /createBattleFrames\(\{[\s\S]{0,400}?runner: battleRunner/);
 });
 
 /**

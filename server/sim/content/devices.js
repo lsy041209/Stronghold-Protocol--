@@ -13,7 +13,8 @@
 //              there: an enemy gains 1 layer — 2 at 重量 ≥ heavyWeight (the device's `value`, 3) — of ASPD aspdPerStack
 //              (fractions are ×100 ASPD) and move speed × (1 + moveMulPerStack × layers), an operator 1 layer of the
 //              ASPD part only; at most maxStacks layers; cleared on leaving
-//   烟雾 g      operators on it cannot be targeted by enemy ranged attacks (stealth flag: blocked enemies still hit them)
+//   烟雾 g      operators on it cannot be targeted by enemy ranged attacks (stealth flag: blocked enemies still hit them —
+//              not 自制投石机, whose 索敌不受阻挡影响: blocked by one with nobody else in range it does not attack)
 //   深水 d      ground enemies on it: sea_drown[enemy].damage dmg/s (无来源 true 持续伤害, not 环境伤害: tags dot /
 //              periodic / deepsea), ASPD attack_speed (×100), move × move_speed
 //   活性源石 i  a unit on it (allies and ground enemies) gets a timed effect: damage true dmg/s, ATK + atk, ASPD +
@@ -334,7 +335,17 @@ function buildTerrain(battle, st) {
   }
 }
 
-/** 活性源石's tick: true damage no unit deals (无来源), tagged 'terrain' = 环境伤害 ("受到来自自然环境的伤害" content reads it). */
+/**
+ * 活性源石's tick: true damage no unit deals (无来源), tagged 'terrain' = 环境伤害 ("受到来自自然环境的伤害" content reads it).
+ *
+ * 🔴 **这不是"漏闸"，是【有意照常】** —— **用户 2026-10-07 10:0x 的裁定**（逐字问法："隐匿的干员站在活性源石/深水里要不要也免伤？"
+ *   ⇒ 答案：**「照常吃（保持现状）」**）：
+ *   地形 / 环境伤害**不是敌人能力、不构成"选择"** ⇒ **隐匿不豁免**（PRTS 与本仓文档一律把地图/地块效果当"照常生效"）。
+ *   ⚠️ **别把它当 bug 去"修"**：给这里加隐匿闸会**与用户口径相反**（对照：毒圈/光环那一类**要**守隐匿 ——
+ *     见 `enemies.js` 的 `pollution()` / `kitChimera`，两者的依据是"官方没写'无视无法选择'且属敌人大范围滞留型"）。
+ *   🔁 **2026-10-07（第 54 轮 A）**：换基座到上游 0.2.1 时，这一段裁定注释**被静默丢掉**（树/overlay 0 命中、冷备 2 命中；
+ *     而 `infectionDamage` 的函数体两版**逐字相同**）⇒ 已**逐字接回**。判据 = `test/content/x3-terrain-stealth.test.js`。
+ */
 const infectionDamage = (battle, amount) => (ctx) => {
   if (amount > 0 && ctx.unit.alive) battle.dealDamage(null, ctx.unit, { amount, type: 'true', canDodge: false, tags: ['terrain'] });
 };
@@ -343,6 +354,8 @@ const infectionDamage = (battle, amount) => (ctx) => {
  * 深水区's 【水蚀】 tick (PRTS 涨潮控制 技能3 深水: "每秒受到40点无来源真实持续伤害（不属于环境伤害，不会触发受击回复）"; PRTS 伤害分类
  * lists 深水区/涨潮水蚀 as BUFF damage): 无来源 true 持续伤害 — tags 'dot' (锡人's 凋敝魂灵 raises it), 'periodic' and
  * 'deepsea' (the 免疫水蚀 swimmers cancel it), no 'terrain' (not 环境伤害), no 受击回复 (noSp).
+ *
+ * 🔴 **同样【有意照常】**（用户 2026-10-07 10:0x：「照常吃（保持现状）」）⇒ **别加隐匿闸** ✓
  */
 const deepWaterDamage = (battle, amount) => (ctx) => {
   if (amount > 0 && ctx.unit.alive) battle.dealDamage(null, ctx.unit, { amount, type: 'true', canDodge: false, sourceless: true, noSp: true, tags: ['dot', 'periodic', 'deepsea'] });
@@ -375,7 +388,7 @@ function enterTerrain(battle, st, u, code) {
  * unit that already carries it gets its full `duration` back and keeps its per-second rhythm — no second effect, no
  * extra tick [ASSUMED: the time counts from the last contact — so an operator deployed on it, always in contact, drains
  * past `duration`]. An operator moved off the tile (Battle.relocate: 夕's 小自在 …; Battle.moveRedeploy: 乌尔比安 S3)
- * keeps it for its time; leaving the field drops it with every buff; a 重生 clears it (enemies.js rebirthCleanse: PRTS
+ * keeps it for its time; leaving the field drops it with every buff; a 重生 clears it (enemies/archetypes.js rebirthCleanse: PRTS
  * 特殊机制 §重生 "清空自身身上除白名单外所有Buff") and contact gives it again while the unit is on the tile [ASSUMED]. The
  * tick (infectionDamage) is true damage no unit deals (无来源), tagged 'terrain' = 环境伤害 (PRTS 自然环境 lists 活性源石),
  * not 'dot' [ASSUMED: PRTS 伤害分类's list of BUFF damage does not name it].

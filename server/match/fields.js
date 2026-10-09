@@ -32,7 +32,7 @@
 import { TICK, SNAPSHOT_EVERY } from '../sim/constants.js';
 import { layerGainRoom } from '../../shared/constants.js';
 import { uniteLeft } from '../sim/spec.js';
-import { GRANTED_CAP_OVERRIDE } from '../sim/content/garrisons/battle.js';
+import { diyTokenOwner } from '../../shared/diy.js';
 
 export const MAX_TICKS_PER_INTERVAL = 8;
 export const INTERVAL_MS = 1000 / 30;
@@ -44,6 +44,22 @@ const SNAP_EVERY = Number.isInteger(SNAPSHOT_EVERY) && SNAPSHOT_EVERY > 0 ? SNAP
 export function maxTicksPerInterval(speed) {
   return Math.max(MAX_TICKS_PER_INTERVAL, Math.ceil((Number(speed) || GAME_SPEED) * 4));
 }
+
+/**
+ * 🔴 **卡顿欠账的上限（游戏秒）** —— 2026-10-07 第 49 轮 A 加（A-3b）。
+ *
+ * 两处节拍器（`FieldRunner._pump` / `HeadlessPacer._pump`）原来在 `n > cap` 时写 `this.acc = 0`，
+ * 把**整段欠账抹掉**（注释原话："the remainder is dropped so a stalled server never spirals"）⇒
+ * 事件循环一卡（GC / 大同步任务 / 容器限流），**多出来的时间被永久丢弃**：战斗的游戏时间再也追不上真实时间。
+ * ⚠️ 而**客户端用的是绝对目标 tick**（`public/js/battle/runner.js` 的 `targetTick`，只"晚"不"丢"）
+ *   ⇒ 同一个种子，**服务端跑（`SP_COMBAT=server`）与客户端跑（`SP_COMBAT=client`）会分叉** ✗
+ *   （用户 2026-10-07 裁定：**现在就修，先探针后改** ⇒ 判据 `test/match/pacer-tick-drop.test.js`）
+ *
+ * **现在的口径**：**保留欠账**（下一拍继续按 `cap` 限速补），只把欠账**封顶**在这个值上 ——
+ * 抖动与短卡顿（实测 3 秒真实卡顿 = 6 游戏秒）**一点不丢**；真正的长时间停摆（远超 30 游戏秒）
+ * 仍然会被截断，**不会 spiral**（30 游戏秒 = 900 tick，按 8 tick/interval 补 ≈ 113 拍 ≈ 3.8 秒真实时间）✓
+ */
+export const MAX_CATCHUP_DEBT_SECONDS = 30;
 
 /**
  * Wire frame of a snapshot. Every frame is `{ t: '<type>', …payload }`, so the snapshot's game time (DESIGN §8.2)
@@ -146,7 +162,11 @@ export class FieldRunner {
     this.acc += (dt / 1000) * speed;
     const cap = maxTicksPerInterval(speed);
     let n = Math.floor(this.acc / TICK + 1e-9);
-    if (n > cap) { n = cap; this.acc = 0; } else this.acc -= n * TICK;
+    // 🔴 **卡顿不丢时间**（2026-10-07 第 49 轮 A 修 A-3b）：原来这里是 `{ n = cap; this.acc = 0; }`
+    // ⇒ 把**整段欠账抹掉**，服务端跑出的战斗会永久落后于真实时间、并与客户端（绝对目标 tick，只晚不丢）分叉。
+    // 现在**保留欠账**、只按 cap 限速推进，欠账封顶见 `MAX_CATCHUP_DEBT_SECONDS`；
+    // 判据：`test/match/pacer-tick-drop.test.js`（修前实测：3 秒卡顿被吞掉 172 tick）✓
+    if (n > cap) { n = cap; this.acc = Math.min(this.acc - n * TICK, MAX_CATCHUP_DEBT_SECONDS); } else this.acc -= n * TICK;
     for (let i = 0; i < n && !this.done && !this.stopped; i++) {
       this._tick();
       if (this.fields.every((f) => !f.live)) break;
@@ -431,7 +451,11 @@ export class HeadlessPacer {
     this.acc += (dt / 1000) * speed;
     const cap = maxTicksPerInterval(speed);
     let n = Math.floor(this.acc / TICK + 1e-9);
-    if (n > cap) { n = cap; this.acc = 0; } else this.acc -= n * TICK;
+    // 🔴 **卡顿不丢时间**（2026-10-07 第 49 轮 A 修 A-3b）：原来这里是 `{ n = cap; this.acc = 0; }`
+    // ⇒ 把**整段欠账抹掉**，服务端跑出的战斗会永久落后于真实时间、并与客户端（绝对目标 tick，只晚不丢）分叉。
+    // 现在**保留欠账**、只按 cap 限速推进，欠账封顶见 `MAX_CATCHUP_DEBT_SECONDS`；
+    // 判据：`test/match/pacer-tick-drop.test.js`（修前实测：3 秒卡顿被吞掉 172 tick）✓
+    if (n > cap) { n = cap; this.acc = Math.min(this.acc - n * TICK, MAX_CATCHUP_DEBT_SECONDS); } else this.acc -= n * TICK;
     for (const e of [...this.entries]) {
       if (this.stopped) break;
       if (e.done) continue;
@@ -542,6 +566,17 @@ function summonsOf(gd, chessId) {
   for (const id of [chessId, rec && rec.baseId, rec && rec.goldenId]) for (const t of (id && idx.byOwner.get(id)) || []) out.add(t);
   return [...out];
 }
+/**
+ * Summon ids a 自选 piece (0.2.0: a DIY slot `slotId` with its `pick`) can create: data/backups.json tokens whose owners
+ * name the pick's owner form (`<charId>@<statusKey>`, shared/diy.js diyTokenOwner).
+ */
+function diySummonsOf(gd, slotId, pick) {
+  const tokens = gd.raw && gd.raw.backups && gd.raw.backups.tokens && typeof gd.raw.backups.tokens === 'object' ? gd.raw.backups.tokens : null;
+  const slot = typeof gd.chess === 'function' && typeof slotId === 'string' ? gd.chess(slotId) : null;
+  if (!tokens || !slot || !pick || typeof pick.charId !== 'string') return [];
+  const owner = diyTokenOwner(pick.charId, slot.status);
+  return Object.keys(tokens).filter((id) => Array.isArray(tokens[id] && tokens[id].owners) && tokens[id].owners.includes(owner));
+}
 /** Summons no chess owns (bond / band units every player may field: 炎佑, 预备干员-医疗, Touch). */
 function ownerlessSummons(gd) { return summonIndex(gd).ownerless; }
 
@@ -577,8 +612,8 @@ function layerBondsOf(p, gd) {
  * §21.26): the traits of its units (garrisons with `bond_add_count` / `bond_add_count_multi`) and the ones their ADD_BOND
  * traits hand out (`give_garrison_id`, counted for every operator of the player — "所有【X】" reaches them all), each on
  * the bonds it names (`bond_by_id` ids; `bond_self` / `bond_actived_maxstack`: every bond of the player's snapshot and
- * units), up to the per-battle cap the sim applies (content/garrisons/battle.js: `max_add_count_per_battle`, the handed-out
- * 华法琳 trait's GRANTED_CAP_OVERRIDE). A trait the data gives no cap (初雪 / 银灰's freeze trait, 菲莱 / 百炼嘉维尔's per-skill
+ * units), up to the per-battle cap the sim applies (content/garrisons/battle.js: `max_add_count_per_battle` — a handed-out
+ * trait's too, 华法琳's 7 / 14, GitHub #175). A trait the data gives no cap (初雪 / 银灰's freeze trait, 菲莱 / 百炼嘉维尔's per-skill
  * 萨尔贡, 斯卡蒂's per-kill …) — or a 魔王, whose +extra on every trait gain counts toward no cap — leaves its bonds bounded
  * only by the room under 999 (Infinity here): such boards legitimately gain hundreds of layers a battle.
  * @returns {Map<string, number>} bondId → extra allowance (Infinity: uncapped)
@@ -590,23 +625,22 @@ function layerAllowanceOf(p, gd) {
   const lineup = new Set(Object.keys(p.bonds && typeof p.bonds === 'object' ? p.bonds : {}));
   for (const u of units) for (const b of gd.chess(u.chessId)?.bonds || []) lineup.add(b);
   let extra = false;
-  const credit = (g, times, handedOut) => {
+  const credit = (g, times) => {
     const bb = g.bb || {};
     if (Number.isFinite(bb.extra_cnt)) { extra = true; return; }
     if (!Number.isFinite(bb.bond_add_count) && !Number.isFinite(bb.bond_add_count_multi)) return;
     const s = g.bbStr || {};
     const bonds = s.bond_type === 'bond_by_id' ? String(s.bond_id ?? '').split(',').map((x) => x.trim()).filter((x) => gd.bond(x)) : [...lineup];
-    const override = handedOut ? GRANTED_CAP_OVERRIDE[g.garrisonId] : undefined;
-    const cap = override ?? (Number(bb.max_add_count_per_battle) > 0 ? Number(bb.max_add_count_per_battle) : Infinity);
+    const cap = Number(bb.max_add_count_per_battle) > 0 ? Number(bb.max_add_count_per_battle) : Infinity;
     for (const b of bonds) out.set(b, (out.get(b) || 0) + cap * times);
   };
   for (const u of units) {
     for (const gid of gd.chess(u.chessId)?.garrisonIds || []) {
       const g = gd.garrison(gid);
       if (!g || g.eventType !== 'IN_BATTLE') continue;
-      if (g.effectKey !== 'ADD_BOND') { credit(g, 1, false); continue; }
+      if (g.effectKey !== 'ADD_BOND') { credit(g, 1); continue; }
       const given = gd.garrison(g.bbStr?.give_garrison_id);
-      if (given && given.eventType === 'IN_BATTLE') credit(given, units.length, true);
+      if (given && given.eventType === 'IN_BATTLE') credit(given, units.length);
     }
   }
   if (extra) for (const b of out.keys()) out.set(b, Infinity);
@@ -674,6 +708,7 @@ export function specBounds(spec, gd = null) {
       if (u.kind !== 'token') {
         chess.set(u.uid, defId);
         if (gd) for (const t of summonsOf(gd, defId)) defIds.add(t);
+        if (gd && u.diy) for (const t of diySummonsOf(gd, defId, u.diy)) defIds.add(t);
       }
     }
     // the layers each bond starts the battle with (PlayerBattleInput.bonds): a gain never passes BOND_LAYER_CAP

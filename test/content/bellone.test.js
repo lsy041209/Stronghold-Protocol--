@@ -19,14 +19,14 @@ const bellone = {
   ],
   immunities: { stun: false, silence: false, sleep: false, frozen: false, levitate: false },
   skill: {
-    skillId: 'skchr_bellone_1', name: '家主的余裕', level: 4, skillType: 'AUTO', durationType: 'NONE', duration: 0,
+    skillId: 'skchr_demetr_1', name: '家主的余裕', level: 4, skillType: 'AUTO', durationType: 'NONE', duration: 0,
     spType: 'INCREASE_WHEN_ATTACK', spCost: 4, initSp: 0, maxChargeTime: 1, increment: 1,
-    bb: { 'attack@atk_scale': 1.8, 'attack@times': 2 }, bbStr: {}, rangeId: null, rangeGrid: null, prefabId: 'skchr_bellone_1',
+    bb: { 'attack@atk_scale': 1.8, 'attack@times': 2 }, bbStr: {}, rangeId: null, rangeGrid: null, prefabId: 'skchr_demetr_1',
     trigger: { rule: 'DEFAULT' }, index: 0, overrideTokenKey: null,
   },
   skills: [
-    { skillId: 'skchr_bellone_1', iconId: 'skchr_bellone_1', name: '家主的余裕', level: 4, desc: 'x', descRaw: 'x', isDefault: true, skillType: 'AUTO', durationType: 'NONE', duration: 0, spType: 'INCREASE_WHEN_ATTACK', spCost: 4, initSp: 0, maxChargeTime: 1, increment: 1, bb: { 'attack@atk_scale': 1.8, 'attack@times': 2 }, bbStr: {}, rangeId: null, rangeGrid: null, prefabId: 'skchr_bellone_1', trigger: { rule: 'DEFAULT' }, index: 0, overrideTokenKey: null },
-    { skillId: 'skchr_bellone_2', iconId: 'skchr_bellone_2', name: '军师的手段', level: 4, desc: 'x', descRaw: 'x', isDefault: false, skillType: 'MANUAL', durationType: 'NONE', duration: 15, spType: 'INCREASE_WITH_TIME', spCost: 29, initSp: 14, maxChargeTime: 1, increment: 1, bb: { attack_speed: 40, 'attack@max_target': 3, 'attack@atk_scale': 1.55, duration: 15 }, bbStr: {}, rangeId: '3-13', rangeGrid: [[1, 1], [1, 2], [0, 0], [0, 1], [0, 2], [0, 3], [-1, 1], [-1, 2]], prefabId: 'skchr_bellone_2', trigger: { rule: 'DEFAULT' }, index: 1, overrideTokenKey: null },
+    { skillId: 'skchr_demetr_1', iconId: 'skchr_demetr_1', name: '家主的余裕', level: 4, desc: 'x', descRaw: 'x', isDefault: true, skillType: 'AUTO', durationType: 'NONE', duration: 0, spType: 'INCREASE_WHEN_ATTACK', spCost: 4, initSp: 0, maxChargeTime: 1, increment: 1, bb: { 'attack@atk_scale': 1.8, 'attack@times': 2 }, bbStr: {}, rangeId: null, rangeGrid: null, prefabId: 'skchr_demetr_1', trigger: { rule: 'DEFAULT' }, index: 0, overrideTokenKey: null },
+    { skillId: 'skchr_demetr_2', iconId: 'skchr_demetr_2', name: '军师的手段', level: 4, desc: 'x', descRaw: 'x', isDefault: false, skillType: 'MANUAL', durationType: 'NONE', duration: 15, spType: 'INCREASE_WITH_TIME', spCost: 29, initSp: 14, maxChargeTime: 1, increment: 1, bb: { attack_speed: 40, 'attack@max_target': 3, 'attack@atk_scale': 1.55, duration: 15 }, bbStr: {}, rangeId: '3-13', rangeGrid: [[1, 1], [1, 2], [0, 0], [0, 1], [0, 2], [0, 3], [-1, 1], [-1, 2]], prefabId: 'skchr_demetr_2', trigger: { rule: 'DEFAULT' }, index: 1, overrideTokenKey: null },
   ],
 };
 
@@ -41,7 +41,7 @@ const h = (extra = {}) => makeBattle({
 test('贝洛内: kit 加载 + 街头直觉闪避 + 家族手段降防', () => {
   const b = h();
   const u = b.unit('chess_bellone_a');
-  assert.ok(u.kit && u.kit.skills && u.kit.skills.skchr_bellone_1, 'kit loaded (not generic)');
+  assert.ok(u.kit && u.kit.skills && u.kit.skills.skchr_demetr_1, 'kit loaded (not generic)');
   // 天赋2 街头直觉: 部署后 80%（40% 常态 + 40% 部署加成），20 秒后回落到 40%
   assert.ok(u.s.dodgePhys > 0.4 && u.s.dodgeArts > 0.4, `dodge ${u.s.dodgePhys}/${u.s.dodgeArts} (deploy boost above base)`);
   // 天赋1 家族手段: 攻击命中 → 目标降防（叠层）
@@ -56,8 +56,8 @@ test('贝洛内: kit 加载 + 街头直觉闪避 + 家族手段降防', () => {
 test('贝洛内 S1 家主的余裕: 满 SP 后技能释放，攻击命中两段', () => {
   const b = h({ unit: { carryState: { sp: 999 } } });
   const u = b.unit('chess_bellone_a');
-  b.runUntil(() => b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_bellone_1'), 40);
-  assert.ok(b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_bellone_1'), 'S1 cast');
+  b.runUntil(() => b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_demetr_1'), 40);
+  assert.ok(b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_demetr_1'), 'S1 cast');
   checkInvariants(b.b);
 });
 
@@ -77,7 +77,7 @@ const elite = {
   skills: [
     ...bellone.skills,
     {
-      skillId: 'skchr_bellone_3', iconId: 'skchr_bellone_3', name: '清算', level: 7, desc: 'x', descRaw: 'x', isDefault: false,
+      skillId: 'skchr_demetr_3', iconId: 'skchr_demetr_3', name: '清算', level: 7, desc: 'x', descRaw: 'x', isDefault: false,
       skillType: 'MANUAL', durationType: 'NONE', duration: 30, spType: 'INCREASE_WITH_TIME', spCost: 39, initSp: 23,
       bb: { atk: 1.4, attack_speed: 40, 'attack@atk_scale': 1.5, 'attack@prob': 0.4, duration: 30 },
       trigger: { rule: 'DEFAULT' }, index: 2,
@@ -98,9 +98,9 @@ const he = (extra = {}) => makeBattle({
 });
 
 test('贝洛内 S2 军师的手段: kit 把数据的官方 3-13 网格接进 targeting（不再用 rangeExtend）', () => {
-  const s2rec = bellone.skills.find((s) => s.skillId === 'skchr_bellone_2');
+  const s2rec = bellone.skills.find((s) => s.skillId === 'skchr_demetr_2');
   // the kit factory receives (bb, chess, def) with def.skill = the SELECTED skill record
-  const spec = kits.chess_bellone_a({}, bellone, { skill: s2rec }).skills.skchr_bellone_2;
+  const spec = kits.chess_bellone_a({}, bellone, { skill: s2rec }).skills.skchr_demetr_2;
   assert.deepEqual(spec.targeting.rangeGrid, G313, 'S2 的 targeting.rangeGrid 就是官方 3-13');
   assert.equal(spec.targeting.rangeGrid.length, 8, '3-13 = 4×3 去四角 = 8 格');
   assert.equal(spec.targeting.maxTargets, 3);
@@ -109,17 +109,75 @@ test('贝洛内 S2 军师的手段: kit 把数据的官方 3-13 网格接进 tar
   const abs = absoluteRangeKeys(spec.targeting.rangeGrid, 10, 4, 'RIGHT', 0);
   assert.deepEqual(abs.map((k) => [Math.floor(k / COLS), k % COLS]), [[11, 5], [11, 6], [10, 4], [10, 5], [10, 6], [10, 7], [9, 5], [9, 6]]);
   // 未选 S2 时不该带范围（默认 1-1）
-  const s1rec = bellone.skills.find((s) => s.skillId === 'skchr_bellone_1');
-  const spec1 = kits.chess_bellone_a({}, bellone, { skill: s1rec }).skills.skchr_bellone_2;
+  const s1rec = bellone.skills.find((s) => s.skillId === 'skchr_demetr_1');
+  const spec1 = kits.chess_bellone_a({}, bellone, { skill: s1rec }).skills.skchr_demetr_2;
   assert.equal(spec1.targeting.rangeGrid, null, '数据没给技能范围时回落到默认');
+});
+
+// ---- 用户实测 bug（A-2）：敌人**只在技能范围、不在本体范围**时也必须开技能 -------------------------------------------
+//
+// 现象（用户 2026-10-05 报，会话 C 端到端复测）：贝洛内带 S2，敌人落在 S2 的 3-13 里、本体 1-1 外
+// （例如本体在 (10,4)、敌人在 (10,7)）⇒ **技能永远不开** ✗。
+// 根因：DEFAULT 技能的开启挂在「即将攻击」上（`onAboutToAttack`），而**没有目标就不会尝试攻击** ⇒
+// 没有这次尝试，`onAboutToAttack` 永不触发。修法在 `server/sim/ai.js` 的 `acquireTargets`：
+// 本体射程无目标时，退一步看「当前选定技能自身的 `rangeGrid`」，有目标就返回它（只影响"本来没目标"的情形）。
+//
+// ⚠️ 这条用例是**端到端**的（真的跑战斗循环），因为原来的 `bellone.test.js:100` 只断言数据接线
+// （`targeting.rangeGrid` = 官方 3-13），它**覆盖不到这条症状** —— 那次 bug 就是从这个缺口漏过去的。
+
+test('贝洛内 S2 只在技能范围内（本体射程外）也必须开技能（用户实测 A-2）', () => {
+  // 本体 1-1 = (10,4) 自身 + (10,5)；S2 的 3-13 含 (10,7)（前方第 3 格）—— 敌人只落在后者里
+  const b = makeBattle({
+    defs: {
+      chess: { chess_bellone_a: bellone },
+      enemies: { enemy_e: enemyRec({ key: 'enemy_e', hp: 1e7, def: 200, res: 0, atk: 0, speed: 0, bat: 99 }) },
+    },
+    units: [{ chessId: 'chess_bellone_a', row: 10, col: 4, skillIndex: 1, carryState: { sp: 999 } }],
+    enemies: [{ key: 'enemy_e', pos: [10, 7] }],
+    timeLimit: 40,
+  });
+  const u = b.unit('chess_bellone_a');
+  const sk = u.skill;
+  assert.equal(sk.id, 'skchr_demetr_2', '选中的是 S2');
+  // 前置条件（否则下面的断言没有意义）：敌人确实在技能范围里、且确实**不在**本体初始范围里
+  const baseKeys = new Set(u.baseRangeKeys || u.rangeKeys || []);
+  const inBase = baseKeys.has(10 * COLS + 7);
+  assert.equal(inBase, false, `敌人在本体射程外（本体 ${[...baseKeys].map((k) => [Math.floor(k / COLS), k % COLS]).join(' ')}）`);
+  // ⚠️ 注意：**不要**在这里断言 `sk._skillRangeSatisfied()` —— 它读的是 `u.def.skill.rangeGrid`，
+  //    而**未选中技能时的 `def.skill` 就是默认技能**（S1），其 `rangeGrid` 是 null ⇒ 这条对贝洛内恒 false，
+  //    与「技能范围」（`skills[1].rangeGrid`）不是同一个来源。真正管用的判据是**技能真的开了**（下面）✓。
+  // 断言：技能真的开了（不是"看起来在打"）
+  const a0 = sk.activations;
+  b.runUntil(() => sk.activations > a0, 40);
+  assert.ok(sk.activations > a0, `开过 ${sk.activations - a0} 次（应为 ≥1）`);
+  assert.equal(sk.active, true, 'S2 处于激活态');
+  checkInvariants(b.b);
+});
+
+test('贝洛内 S2 完全不在技能范围时仍然不开技能（A-2 的反向对照，防「无脑开」）', () => {
+  const b = makeBattle({
+    defs: {
+      chess: { chess_bellone_a: bellone },
+      enemies: { enemy_e: enemyRec({ key: 'enemy_e', hp: 1e7, def: 200, res: 0, atk: 0, speed: 0, bat: 99 }) },
+    },
+    units: [{ chessId: 'chess_bellone_a', row: 10, col: 4, skillIndex: 1, carryState: { sp: 999 } }],
+    enemies: [{ key: 'enemy_e', pos: [10, 12] }],   // 3-13 之外（前方第 8 格）
+    timeLimit: 40,
+  });
+  const u = b.unit('chess_bellone_a');
+  const sk = u.skill;
+  const a0 = sk.activations;
+  b.run(20);
+  assert.equal(sk.activations, a0, '技能范围里没有敌人 ⇒ 不该开技能');
+  checkInvariants(b.b);
 });
 
 test('贝洛内 S3 清算: 技能开始【移动】到 x-2 内、最靠近目标的格；技能结束返回初始位置', () => {
   const b = he({ unit: { carryState: { sp: 999 }, skillIndex: 2 } });
   const u = b.unit('chess_bellone_b');
   const home = { r: u.tileR, c: u.tileC };
-  b.runUntil(() => b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_bellone_3'), 40);
-  assert.ok(b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_bellone_3'), 'S3 cast');
+  b.runUntil(() => b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_demetr_3'), 40);
+  assert.ok(b.hooksOf('skillStart').some((c) => c.unit === u && c.skill?.id === 'skchr_demetr_3'), 'S3 cast');
   const moved = u.tileR !== home.r || u.tileC !== home.c;
   assert.ok(moved, '【移动】应当把贝洛内挪到目标附近的一格');
   // 落点必须落在官方 x-2 选取范围内
@@ -136,7 +194,7 @@ test('贝洛内 S3 清算: 受到致命伤害时不撤退、生命保到 1、技
   const b = he({ unit: { carryState: { sp: 999 }, skillIndex: 2 } });
   const u = b.unit('chess_bellone_b');
   const home = { r: u.tileR, c: u.tileC };
-  b.runUntil(() => u.skill?.active && u.skill.id === 'skchr_bellone_3', 40);
+  b.runUntil(() => u.skill?.active && u.skill.id === 'skchr_demetr_3', 40);
   assert.ok(u.skill.active, 'S3 已开启');
   // 一次必定致死的伤害（流失走的是同一条 fatal 记账路径）
   b.b.loseHp(u, 1e9, { source: null });
@@ -163,7 +221,7 @@ test('贝洛内 S3 清算: 击倒精英敌人后立即重新选取目标（换�
     timeLimit: 40,
   });
   const u = b.unit('chess_bellone_b');
-  b.runUntil(() => u.skill?.active && u.skill.id === 'skchr_bellone_3', 40);
+  b.runUntil(() => u.skill?.active && u.skill.id === 'skchr_demetr_3', 40);
   assert.ok(u.skill.active, 'S3 已开启');
   const eliteFoe = b.enemies().find((e) => (e.def?.rank || '').toUpperCase() === 'ELITE');
   assert.ok(eliteFoe, '精英敌人存在');

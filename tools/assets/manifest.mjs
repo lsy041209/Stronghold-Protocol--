@@ -7,7 +7,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { assetUrl, mirrorUrl } from './sources.mjs';
+import { assetUrl, githubSourceUrl, mirrorUrl } from './sources.mjs';
 
 /** Manifest schema version (bump on breaking shape changes). */
 export const MANIFEST_VERSION = 1;
@@ -53,7 +53,9 @@ export function collectLeaves(node, path = '', out = []) {
 export async function downloadLeaves(leaves, dl, root, label = 'files') {
   const tried = new Map(leaves.map((l) => [l, 0]));
   const blocked = new Set();
-  const satisfied = (l) => l.leaf.alts.slice(0, tried.get(l)).some((a) => existsSync(join(root, a.rel)));
+  // `actualRel`（不是裸 rel）：已转成 webp 的树里，计划写 .png 而盘上是 .webp ⇒ 已落盘的叶子
+  // 必须算"已满足"，否则每次跑配方都要把整棵素材重下一遍。
+  const satisfied = (l) => l.leaf.alts.slice(0, tried.get(l)).some((a) => actualRel(root, a.rel) !== null);
   let last = new Map();
   for (let round = 0; round < 8; round++) {
     const jobs = [];
@@ -82,6 +84,28 @@ export async function downloadLeaves(leaves, dl, root, label = 'files') {
  *   fallbacks that share the primary's path (e.g. an enemy icon taken from its base id)
  * @returns {{ value: any, misses: string[], fallbacks: string[], files: Set<string> }}
  */
+/**
+ * W-1-REAPPLY-2026-10-07：一个 leaf 备选在盘上**真正**存在的路径 —— 要么就是 `rel` 本身，要么是它转换后的 `.webp` 兄弟。
+ *
+ * 计划里存的是**上游的 `.png` 名**（`plan.mjs` 写 `rel: 'ui/<key>.png'`），而本工作区的 `public/assets`
+ * 已整体由 `.workbuddy/tools/convert-assets.py` 转成 WebP（小 ~70%、像素一致）。转换器会改写已提交的清单，
+ * 但**故意不动 `plan.mjs`** —— 因为计划描述的是**镜像站提供什么**（` .png`）。
+ *
+ * 所以解析器必须两种形态都认、并报出盘上真在的那个。修复前实测：计划的 127 个静态 UI 叶子，
+ * 以 `.png` 存在的 **0** 个、以 `.webp` 存在的 **127** 个 ⇒ `resolveTemplate` 一个都没解析出来、报 127 miss
+ * ⇒ 一旦放行写盘，清单会丢掉这些条目，全站图标退化（与 2026-10-05 图标全灭同一失败模式）。
+ *
+ * @param {string} root public/assets
+ * @param {string} rel 计划里的相对路径（上游命名）
+ * @returns {string|null} 真在盘上的那个 rel，或 null
+ */
+function actualRel(root, rel) {
+  if (existsSync(join(root, rel))) return rel;
+  const webp = String(rel).replace(/\.png$/i, '.webp');
+  if (webp !== rel && existsSync(join(root, webp))) return webp;
+  return null;
+}
+
 export function resolveTemplate(template, { root, spine, sourceOf = () => undefined }) {
   const misses = [];
   const fallbacks = [];
@@ -92,13 +116,16 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
     if (isLeaf(node)) {
       for (let i = 0; i < node.alts.length; i++) {
         const a = node.alts[i];
-        if (existsSync(join(root, a.rel))) {
+        const actual = actualRel(root, a.rel);
+        if (actual) {
           const src = sourceOf(a.rel);
+          // Provenance only: disabling/changing a proxy does not change the
+          // identity of a previously downloaded asset.
           const primary = node.alts[0].urls.flatMap((u) => [u, mirrorUrl(u)]);
           if (i > 0) fallbacks.push(`${path} ← ${src || a.urls[0]}`);
-          else if (src && !primary.includes(src)) fallbacks.push(`${path} ← ${src}`);
-          files.add(a.rel);
-          return assetUrl(a.rel);
+          else if (src && !primary.includes(githubSourceUrl(src))) fallbacks.push(`${path} ← ${src}`);
+          files.add(actual);
+          return assetUrl(actual);
         }
       }
       misses.push(path);
@@ -110,7 +137,12 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
       for (const u of [e.skel, e.atlas, ...e.textures]) files.add(u.replace(/^\/assets\//, ''));
       return e;
     }
-    if (Array.isArray(node)) return node.map((x, i) => walk(x, `${path}[${i}]`)).filter((x) => x !== undefined);
+    if (Array.isArray(node)) {
+      const lines = node.map((x, i) => walk(x, `${path}[${i}]`)).filter((x) => x !== undefined);
+      // An array whose every line is missing on disk is a missing entry, like a missing leaf (e.g. a voice slot whose
+      // lines were never downloaded here): dropped, never an empty [] that reads as a slot with no lines.
+      return lines.length || !node.length ? lines : undefined;
+    }
     if (typeof node !== 'object') return node;
     const out = {};
     for (const [k, v] of Object.entries(node)) {
@@ -134,7 +166,12 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
  */
 export function totalBytes(root, rels) {
   let n = 0;
-  for (const r of rels) { try { n += statSync(join(root, r)).size; } catch { /* missing */ } }
+  // `actualRel`：转换过的树要报**真实**体积，而不是因为计划写 .png、盘上是 .webp 而全部算成 0。
+  for (const r of rels) {
+    const actual = actualRel(root, r);
+    if (!actual) continue;
+    try { n += statSync(join(root, actual)).size; } catch { /* missing */ }
+  }
   return n;
 }
 

@@ -1,0 +1,299 @@
+/* chat.css —— 对局中的聊天面板（第 6 任 B，2026-10-07；C 总表 B-6 / `D给B-聊天面板UI口径-2026-10-07.md`）
+ *
+ * 用户 07:0x 口径：可拖动 / 可收起（收起时把手上弹**红点**）/ 保留表情包 / 纯观战只读 / 重进看得到最近几条。
+ *
+ * 约定（照 `public/css` 既有手法，见 `游戏代码解析` 与 `test/client-static.test.js`）：
+ *   · 尺寸一律 `max(Nrem, Npx)` 回退 —— 因为 `theme.css:110` 的根字号是
+ *     `clamp(40px, min(100vw/19.2, 100vh/10.8), 240px)`：**450px 宽时 1rem ≈ 23.4px**（桌面的一半），
+ *     纯 rem 会在窄屏缩到点不到 ⇒ 全部给小屏兜住像素下限。
+ *   · 窄屏复用**既有**的 `@media (max-width: 767px)`（本工程没有 450px 断点，别新造）。
+ *   · **不许** `:has()` / 嵌套 / `@layer`（`test/client-static.test.js` 会红）。
+ *   · 收起态的外层 `pointer-events: none`、只有把手收事件 —— 抄 `ui/lanPanel.js:76-78` 的手法，
+ *     否则左下角 HUD 会多出一块**点不到的死区**。
+ */
+
+/* ---- 宿主：默认就待在 .gm__corner 里（与表情/设置同一排）；被拖动后固定到视口坐标 --------------- */
+.sp-chat-host {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;                 /* 只有真正可点的元素收事件（见下） */
+}
+.sp-chat-host.is-pinned { position: fixed; z-index: 46; }
+.sp-chat { pointer-events: auto; }
+
+/* 🔴 2026-10-09（D 缺陷单「聊天面板遮不严 ＋ 面板外仍能点到商店（会误购）」；用户原话：
+   「修复以后又显得聊天栏格外大。**至少把干员的信息也遮好**并**让玩家打开聊天界面以后无法购买**」）
+   ─────────────────────────────────────────────────────────────────────────────────────────
+   根因：`.sp-chat-host { pointer-events: none }` 是**为收起态设计的**（收起的把手不该挡游戏）——
+   那个判断是对的；但**打开态没跟着改** ⇒ **面板矩形之外、宿主之内**的区域仍然**穿透到后面的商店**
+   ⇒ ① 误购（点到露在旁边的卡面就买了）② 面板是"浮在卡面上的裸矩形"，没有边界/压暗。
+   ✅ 修法（纯 CSS，不动 `chatPanel.js`）：
+     ① **打开态让宿主收事件** ⇒ 面板矩形外一律**吃掉点击**（不穿透到商店）⇒ **误购消失**；
+     ② `::before` 铺一层**半透明压暗** ⇒ 有明确边界，"遮好了"；
+     ③ **给尺寸加上限** ⇒ 不再"格外大"（用户同时抱怨的那条）。
+   ⛔ 收起态**保持** `pointer-events: none`（别把既有那个正确设计改坏）。
+   ⚠️ **不能用 `:has()`** —— 本仓 `test/client-static.test.js` 明令禁止（`:has()` / 嵌套 / `@layer` 都会红）。
+   ✅ 正解：宿主里加一个**遮罩层** `.sp-chat__backdrop`（`chatPanel.js` 打开态才渲染），
+      它 `pointer-events: auto` ⇒ **面板矩形外一律被它吃掉**（不穿透到商店），
+      并且**点它 = 收起面板**（D 建议的"点外即关"）。宿主本身**不动**（否则会破坏拖拽）。
+   ✅ 同时给面板**加上限**（用户同时抱怨"格外大"）。
+   📌 归 C（`chat.css` 是 C 的面）；`chatPanel.js` 那两行由 C 改、**已在协作件里向 B 报备**。 */
+.sp-chat__backdrop {
+  /* ⚠️ **必须给 z-index: 45**（D 复核实测抓出）：
+     C 第一版去掉负 z-index 后**没给正值** ⇒ 遮罩铺在**最上层**，把**面板自己**盖住了
+     （实测：面板中心 / 面板头 /「收起」按钮 / 消息列表 的 `elementFromPoint` 全返回 `div.sp-chat__backdrop`）。
+     层级设计（45/46 的理由）：局内**全部正栈级最高是 `.uframe` 12** ⇒
+       · 遮罩 **45** ⇒ 压过商店/棋盘，**面板外点不到商店**（误购消失）；
+       · 面板 **46**（与既有 `.sp-chat-host.is-pinned` 同义）⇒ **面板自己照常可点**。 */
+  position: fixed; inset: 0; z-index: 45;
+  background: rgba(6, 10, 9, .45);
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* 打开态的面板抬到遮罩之上（收起态不加 position/z-index ⇒ 原行为一字不动） */
+.sp-chat.is-open { position: relative; z-index: 46; }
+
+/* ---- 面板本体 ----------------------------------------------------------------------------------- */
+.sp-chat.is-open {
+  display: flex; flex-direction: column;
+  width: max(4.6rem, 228px);
+  max-width: calc(100vw - .48rem);      /* 窄屏不许溢出（450px 时 ≈ 213px） */
+  max-height: min(46vh, max(3.4rem, 170px));
+  background: rgba(10, 16, 20, .92);
+  border: 1px solid var(--line);
+  border-radius: .1rem;
+  box-shadow: 0 .12rem .3rem rgba(0, 0, 0, .5);
+  overflow: hidden;
+}
+
+.sp-chat__head {
+  display: flex; align-items: center; gap: .06rem;
+  padding: .07rem .08rem;
+  background: rgba(255, 255, 255, .05);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+}
+.sp-chat__grip {
+  flex: 0 0 auto; min-width: var(--tap-min, 22px); text-align: center;
+  color: var(--text-lo); cursor: grab; user-select: none;
+}
+.sp-chat__title { flex: 1 1 auto; font-size: max(.15rem, 11px); color: var(--text-hi); }
+.sp-chat__count { flex: 0 0 auto; font-size: max(.12rem, 9px); color: var(--text-lo); }
+.sp-chat__btn {
+  flex: 0 0 auto; padding: .04rem .1rem; cursor: pointer;
+  font-size: max(.13rem, 10px); color: var(--text-lo);
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: .06rem;
+}
+.sp-chat__btn:hover { color: var(--text-hi); }
+.sp-chat__btn--x { padding: .04rem .07rem; }
+
+.sp-chat__list { flex: 1 1 auto; overflow-y: auto; padding: .08rem; display: flex; flex-direction: column; gap: .06rem; }
+.sp-chat__msg { display: flex; flex-direction: column; gap: .01rem; }
+.sp-chat__meta { display: flex; align-items: baseline; gap: .06rem; font-size: max(.11rem, 9px); color: var(--text-lo); }
+.sp-chat__who { color: var(--mint-400); }
+.sp-chat__msg.is-mine .sp-chat__who { color: var(--gold, #ffd479); }
+.sp-chat__text { font-size: max(.15rem, 11px); line-height: 1.5; color: var(--text-hi); word-break: break-word; }
+.sp-chat__empty { margin: 0; padding: .12rem .04rem; text-align: center; font-size: max(.13rem, 10px); color: var(--text-lo); }
+.sp-chat__note {
+  margin: 0; padding: .06rem .08rem; font-size: max(.12rem, 9px); line-height: 1.5;
+  color: var(--text-lo); background: rgba(255, 255, 255, .04); border-top: 1px solid var(--line);
+}
+.sp-chat__input { display: flex; align-items: center; gap: .06rem; padding: .07rem .08rem; border-top: 1px solid var(--line); }
+.sp-chat__field { flex: 1 1 auto; min-width: 0; }
+.sp-chat__hint { margin: 0; padding: 0 .08rem .06rem; font-size: max(.11rem, 9px); color: var(--text-lo); }
+
+/* ---- 🔴 红点（本工程原先没有"未读"样式，这里新写）-------------------------------------------------
+ * 抄的是最近的邻居：`emotes.css:91` 的圆点手法（`border-radius` + `::before` 扩大点击区）
+ * 与 `game.css:305` 的红色令牌 `--red-premium`。 */
+.sp-chat.is-collapsed { display: flex; align-items: flex-end; }
+.sp-chat__handle {
+  position: relative; display: flex; align-items: center; gap: .05rem;
+  min-height: var(--tap-min, 34px); padding: .04rem .12rem; cursor: pointer;
+  font-size: max(.14rem, 10px); color: var(--text-hi);
+  background: rgba(10, 16, 20, .88); border: 1px solid var(--line); border-radius: .07rem;
+}
+.sp-chat__handle:hover { border-color: var(--mint-500); }
+.sp-chat__handle-icon { font-size: max(.16rem, 12px); line-height: 1; }
+.sp-chat__handle-text { line-height: 1; }
+.sp-chat__dot {
+  position: absolute; top: -.03rem; right: -.03rem;
+  width: max(.1rem, 8px); height: max(.1rem, 8px); border-radius: 50%;
+  background: var(--red-premium, #ff5c5c);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .6);
+}
+/* 触摸设备上把点击区做够（`--tap-min` 由 devices.css 定义），不然小圆点根本点不到 */
+.sp-chat__dot::before { content: ''; position: absolute; inset: -.16rem; }
+
+/* ---- 窄屏（复用既有断点）：面板改成"满宽减边距"，并抬一档触摸高度 ------------------------------- */
+@media (max-width: 767px) {
+  .sp-chat.is-open { width: max(3.6rem, 180px); max-height: min(42vh, max(3rem, 150px)); }
+  .sp-chat__handle { min-height: var(--tap-min, 44px); }
+}
+
+/* ── 🔴 2026-10-09（缺陷单 #2，用户真机实测 + C 的 JS 探针复现）────────────────────────────────────
+   现象（用户原话）：「手机端游戏局内聊天等功能全部挤在了一起，无法打字和看到消息的同时，也无法使用
+   快捷短句（点击一下会进入选中状态，但后续的选中内容无法选……卡在这里了）」。
+   C 的探针实测（真 Edge 无头 + 892×412 视口 + 注入本文件；`.workbuddy/tools/c-probe-mobile-chat.mjs`）：
+     · 面板 228×170，**消息列表只有 6px 高** ⇒ 一条消息都看不见（＝"看不到消息"）；
+     · 点带参短语后 picker 高 131px，**面板内容 315 > 可视 168 且 `overflow: hidden`**
+       ⇒ picker 里 17 个按钮**有 13 个落在面板外、14 个点不到**（＝"选中内容无法选"）；
+     · 面板本身**没有滚动** ⇒ 玩家无从操作，只能刷新（＝"卡在这里了"）。
+   根因两条：① 面板是固定高度，flex 列把消息列表（`flex: 1 1 auto`）**压到 0**；
+             ② 参数选择器是**面板内的一行**，被面板的 `overflow: hidden` 裁掉、且没有退路。
+   ✅ 修法（都针对"结构上不可能"，不靠猜数值）：
+     ① 给面板 `min-height`、给消息列表 `min-height` ⇒ **列表结构上不会再塌成 0**；
+     ② 参数选择器在手机上改成**固定浮层 + 自己可滚 + 取消置顶** ⇒ **结构上不可能被面板裁掉**，
+        也不需要面板变成 `overflow: auto`（那会让头和输入框一起滚走）。
+   ⚠️ 只在 `(max-width: 767px) and (pointer: coarse)`（真机触屏）下改 picker 的定位 —— 桌面键鼠不受影响。 */
+@media (max-width: 767px) {
+  .sp-chat.is-open { min-height: min(52vh, max(4.6rem, 260px)); }
+  .sp-chat__list { min-height: max(2.6rem, 84px); }
+}
+@media (max-width: 767px) and (pointer: coarse) {
+  .sp-chat__btn { min-height: var(--tap-min, 44px); }
+  /* 参数选择器 ⇒ 底部浮层：贴住视口底、满宽减边距、自己可滚，取消按钮钉在最上面 */
+  .sp-chat__picker {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+    max-height: 58vh; overflow-y: auto; overscroll-behavior: contain;
+    padding: .12rem .14rem calc(.12rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(10, 16, 20, .98);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -.16rem .4rem rgba(0, 0, 0, .6);
+  }
+  /* 取消放在最前（最容易被拇指够到），并给够触摸高度 */
+  .sp-chat__picker > [data-chat-pick-cancel] { min-height: var(--tap-min, 44px); }
+}
+
+/* ── 🔴 2026-10-09（缺陷单 #2）：**矮屏**（横屏手机）单独一档 ------------------------------------------
+   ⚠️ 为什么不能只靠上面那条 `max-width: 767px`：**用户那台真机是【横屏 892 CSS px】**
+      （截图 1920 物理 px ÷ devicePixelRatio ≈ 2.1；`(max-width: 767px)` **不命中**）
+      ⇒ 手机端跑的其实是**桌面那套尺寸**：`width: max(4.6rem, 228px)` ＝ **228px 宽**、
+        `max-height: min(46vh, max(3.4rem,170px))` ＝ **170px 高**。
+      C 的探针实测（892×412）：面板 228×170，**消息列表只有 6px 高**（一条都看不见）；
+      点带参短语后 picker 高 131px、**17 个按钮有 13 个落在面板外、14 个点不到** ⇒ 玩家卡死只能刷新。
+   ✅ 这一档用 `(max-height: 560px)`（与 `screens/title.css`、`screens/game.css` 的矮屏手法一致），
+      并统一要求 `(pointer: coarse)` —— **桌面把窗口拖矮不会被改到**。 */
+@media (max-height: 560px) and (pointer: coarse) {
+  /* 满宽减边距：横屏手机有 892px 可用，没必要挤在 228px 里
+     🔴 但**必须加上限**（用户原话「修复以后又显得聊天栏格外大」）—— D 建议 ≤50% 宽 / ≤45% 高。
+        取 min(24rem, 46vw)：892px 视口 ⇒ 410px（46%），400px 有一半以上还能看到棋盘。 */
+  .sp-chat.is-open {
+    width: auto; min-width: min(24rem, 46vw);
+    max-width: min(30rem, 52vw);
+    max-height: min(62vh, max(5rem, 280px));
+    min-height: min(46vh, max(4rem, 230px));
+  }
+  /* 🔴 消息列表必须给出下限：它是 `flex: 1 1 auto`，面板不够高时会被压成 0 */
+  .sp-chat__list { min-height: max(2.4rem, 84px); }
+  /* 快捷短语排与输入行在矮屏下别再各自吃掉一大块 */
+  .sp-chat__quick { max-height: 30vh; overflow-y: auto; }
+  /* 参数选择器 ⇒ 底部浮层（横屏手机同样要能选完、能取消）
+     🔴 `min-height` 是必需的：内容只有两行时若不设下限，浮层只有 ~47px ⇒
+        **第二行按钮落在视口下沿外**（C 实测：17 个按钮里 4 个点不到）。 */
+  .sp-chat__picker {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+    min-height: min(38vh, 150px);
+    max-height: 66vh; overflow-y: auto; overscroll-behavior: contain;
+    padding: .1rem .14rem calc(.1rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(10, 16, 20, .98);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -.16rem .4rem rgba(0, 0, 0, .6);
+  }
+  .sp-chat__picker > [data-chat-pick-cancel] { min-height: var(--tap-min, 44px); }
+  .sp-chat__btn { min-height: var(--tap-min, 44px); }
+}
+
+/* ── 🆕 2026-10-08 个人屏蔽（B12，C 派工 B-C2）──────────────────────────────────────────────────
+   ⚠️ 短语那排按钮的样式（`.sp-chat__quick*`）**已随短语一起删掉** —— 短语挪去了**弹出面板**
+   （`ui/quickWheel.js`，用户 2026-10-08：「像表情一样弹出」），它的样式在同文件的 `.qwheel*` 里。
+   ⇒ 留着旧类名只会让下一个人以为面板里还有那排按钮。 */
+.sp-chat__mute {
+  font: inherit; font-size: 10px; margin-left: 6px; padding: 0 4px; cursor: pointer;
+  border: 0; background: none; color: inherit; opacity: .45; text-decoration: underline;
+}
+.sp-chat__mute:hover { opacity: .9; }
+.sp-chat__msg.is-quick .sp-chat__text { font-style: italic; }   /* 短语与打字在同一列表里混排，视觉上分开 */
+.sp-chat__note[data-chat-textoff] { color: var(--warn, #e8b84b); }
+
+/* ── 🆕 2026-10-08 快捷短语的**弹出面板**（用户口径：「像表情一样，以同样的方法弹出」）────────────────────
+   形状照 `css/emotes.css` 的 交流 按钮 + 面板：一个按钮，点开一个浮层，点外面关、选中即发、发完自动关。 */
+.qwheel { position: relative; display: inline-flex; }
+.qwheel__btn {
+  font: inherit; font-size: 12px; line-height: 1.2; padding: 4px 8px; cursor: pointer;
+  border: 1px solid var(--line, rgba(255, 255, 255, .18)); border-radius: 999px;
+  background: rgba(0, 0, 0, .45); color: inherit; white-space: nowrap;
+}
+.qwheel.is-open .qwheel__btn, .qwheel__btn:hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.qwheel__btn:disabled { opacity: .45; cursor: default; }
+/* 🔴 2026-10-08（用户实测"点击后没有像表情一样弹出"）：
+   ① **几何照表情面板那套**（`css/emotes.css` 的 `.ewheel__panel`：`left:-.15rem; bottom:calc(100% + .02rem); z-index:5`）——
+      它在你机上是好的 ⇒ 直接抄它的位置策略，别自创；
+   ② **层级必须压过聊天面板**：拖动过的聊天宿主是 `z-index: 46`（`.sp-chat-host.is-pinned`）⇒ 我原来 `z-index: 5`
+      会被**压在聊天框底下**，表现就是"点了没弹出来" ⇒ 抬到 **60**；
+   ③ `pointer-events: auto` 显式给上（宿主链上有 `pointer-events: none` 的祖先，见 `.sp-chat-host`）。 */
+.qwheel__panel {
+  position: absolute; bottom: calc(100% + .04rem); left: -.15rem; z-index: 60;
+  pointer-events: auto;
+  min-width: max(9rem, 200px); max-width: min(22rem, 70vw); max-height: 46vh; overflow: auto;
+  padding: 6px; border-radius: 8px; border: 1px solid var(--line, rgba(255, 255, 255, .2));
+  background: rgba(12, 16, 15, .96); box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+}
+.qwheel__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.qwheel__row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 6px; }
+.qwheel__label, .qwheel__empty { font-size: 11px; opacity: .7; }
+.qwheel__cell {
+  font: inherit; font-size: 12px; padding: 4px 6px; cursor: pointer; text-align: left;
+  border: 1px solid var(--line, rgba(255, 255, 255, .16)); border-radius: 6px;
+  background: rgba(255, 255, 255, .06); color: inherit;
+}
+.qwheel__cell:hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.qwheel__cell:disabled { opacity: .4; cursor: default; }
+.qwheel__cell.is-arg { border-style: dashed; }
+.qwheel__cell.is-pick { background: rgba(255, 255, 255, .12); }
+.qwheel { margin-right: 6px; }
+/* 🔴 开关的**可见反馈**（用户口径：我就要浮层；这条同时是诊断器：点了不变色 ⇒ 点击没进组件） */
+.qwheel__btn.is-on, .qwheel.is-open .qwheel__btn { background: rgba(120, 200, 255, .45); color: #eaf7ff; border-color: #8fd0ff; }
+/* 浮层的视觉皮（定位那条写在 inline style 里：居中 fixed） */
+.qwheel__panel { border-radius: 10px; border: 1px solid var(--line, rgba(255, 255, 255, .22)); background: rgba(12, 16, 15, .99); box-shadow: 0 10px 40px rgba(0, 0, 0, .7); padding: 10px; min-width: min(22rem, 86vw); max-height: 70vh; overflow: auto; }
+/* 遮罩：让它一眼就是"浮在屏幕上"的弹层，而不是聊天栏里的一块。点它 = 关（面板自己也监听外面点击） */
+.qwheel__mask { position: fixed; inset: 0; z-index: 9998; background: rgba(0, 0, 0, .45); }
+
+/* ── 🔴 2026-10-08 回退：短语那一排**回到聊天面板里**（用户口径「本身的快捷短语 UI 在初版就对了」）─────
+   一行自动换行的按钮格（手机上自然折成两行）；带参的 4 条点一下展开候选项（`.sp-chat__picker`）。 */
+.sp-chat__quick { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 0; align-items: center; }
+.sp-chat__quick-label { font-size: 11px; opacity: .6; margin-right: 2px; }
+.sp-chat__quick-btn {
+  font: inherit; font-size: 12px; line-height: 1.2; padding: 3px 7px; cursor: pointer;
+  border: 1px solid var(--line, rgba(255, 255, 255, .18)); border-radius: 999px;
+  background: rgba(255, 255, 255, .06); color: inherit;
+}
+.sp-chat__quick-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .14); }
+.sp-chat__quick-btn:disabled { opacity: .4; cursor: default; }
+.sp-chat__quick-btn.is-arg { border-style: dashed; }
+.sp-chat__picker { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 3px 6px 0; }
+.sp-chat__picker-label, .sp-chat__picker-empty { font-size: 11px; opacity: .7; }
+/* 🆕 头像旁的**短语气泡**（表情气泡的兄弟：同一个位置、同一套出现/消失规则，只是内容是文字） */
+.team__bubble--text {
+  max-width: 8.5rem; padding: 2px 6px; border-radius: 6px; font-size: 11px; line-height: 1.35;
+  background: rgba(120, 200, 255, .92); color: #06202e; box-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+  white-space: normal; word-break: break-word;
+}
+
+/* 🔴 2026-10-08（用户实测反馈）：**短语消息必须一眼看出不是"打的字"** ——
+   原来只给了 `font-style: italic`，玩家分不清哪句是快捷短语、哪句是手打的。
+   ⇒ 改成"标签 ＋ 不同底色的气泡"，与打字消息在同一列表里也分得开。 */
+.sp-chat__msg.is-quick {
+  background: rgba(120, 200, 255, .10); border-left: 2px solid rgba(120, 200, 255, .75);
+  border-radius: 4px; padding: 2px 6px;
+}
+.sp-chat__tag {
+  font-size: 10px; line-height: 1.4; padding: 0 4px; margin-right: 4px; border-radius: 3px;
+  background: rgba(120, 200, 255, .28); color: #dff1ff; white-space: nowrap;
+}
+
+/* 🔴 2026-10-08（用户 Q9 第 2 条 bug「不能自由放大缩小」）：聊天框右下角的**缩放把手**。
+   尺寸由 `chatPanel.js` 的 `clampPanelSize` 夹住并存进 `sp.pref.chat.size`。 */
+.sp-chat__grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 3; }
+.sp-chat__grip::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2px solid rgba(255, 255, 255, .55); border-bottom: 2px solid rgba(255, 255, 255, .55); }
+.sp-chat__grip:hover::after { border-color: #8fd0ff; }

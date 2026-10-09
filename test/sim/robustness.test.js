@@ -7,14 +7,6 @@
 // runners measured 0.51–0.58 ms for the same work and failed the 0.5 ms bar on PR #10, PR #12, PR #14 and master's own
 // push. The time is the best of three runs of the same battle (after two warm-up battles), so one noisy neighbour on a
 // runner does not decide it; a real regression of the hot paths still shows locally against 0.5 ms.
-//
-// The bar is asserted only when the run declares itself a perf run (`SP_PERF=1`, like the `SP_E2E` opt-ins) — the same
-// code measured on this machine:
-//   * this file alone:              0.12 ms/tick  → passes the 0.5 ms bar with room to spare
-//   * the whole `node --test` suite: 1.3–2.3 ms/tick (cpu 0.9) → the box, not the code
-// An all-core suite run on a shared/throttled laptop is not a per-tick budget measurement, so the battlefield itself
-// (18 ops, ~130 enemies alive, three identical runs, no errors) is asserted on every run and only the timing bar is
-// gated. Measure it deliberately: `SP_PERF=1 node --test test/sim/robustness.test.js`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Battle } from '../../server/sim/Battle.js';
@@ -743,62 +735,32 @@ test('determinism: shared defs are frozen — a kit that mutates its blackboard 
 
 /** Speed bar of the heavy boss field, ms per tick (see the header): DESIGN §11's 0.5 ms locally, 1.0 ms on CI runners. */
 const BOSS_FIELD_MS_PER_TICK = process.env.CI ? 1.0 : 0.5;
-/** The bar is only asserted on a declared perf run (SP_PERF=1) — see the header. */
-const PERF_RUN = process.env.SP_PERF === '1';
-const NO_BOSS_FIELD = 'this data set has no act2autochess_m01 / act1autochess_h07_01';
-const hasBossField = () => Boolean(ds.getStage('act2autochess_m01') && ds.getWave('act1autochess_h07_01'));
 
-/** One measurement of the heavy boss field: three runs of the same battle after two warm-ups. Memoized, so the
- *  battlefield assertions and the speed bar below share one measurement. */
-let bossField = null;
-function measureBossField() {
-  if (!bossField) {
-    const P = realPools();
-    const keys = ['enemy_1422_lrsldr', 'enemy_1427_lrnazg', 'enemy_1005_yokai', 'enemy_1042_frostd', 'enemy_1425_lrcmra', 'enemy_1040_bombd'].filter((k) => ds.getEnemy(k));
-    const extra = (routes) => Array.from({ length: 120 }, (_, i) => ({ time: (i % 20) * 0.25, enemyKey: keys[i % keys.length], routeIndex: i % routes.length, mods: { hpMul: 20 } }));
-    const mk = (seed) => realBattle(P, seed, { stageId: 'act2autochess_m01', waveId: 'act1autochess_h07_01', extra, units: 9 }).b;
-    for (let w = 0; w < 2; w++) { const b = mk(100 + w); while (b.time < 15) b.step(); }
-    const runs = [];
-    for (let r = 0; r < 3; r++) {
-      const b = mk(7);
-      let n = 0, peak = 0;
-      const cpu0 = process.cpuUsage();
-      const t0 = performance.now();
-      while (!b.finished && b.time < 60) {
-        b.step();
-        if (++n % 3 === 0) { b.snapshot(); b.drainEvents(); }
-        peak = Math.max(peak, b.enemies.length);
-      }
-      const wall = (performance.now() - t0) / n;
-      const cpu = process.cpuUsage(cpu0);
-      runs.push({ avg: wall, cpu: (cpu.user + cpu.system) / 1000 / n, n, peak, ops: b.allyUnits.filter((u) => u.kind === 'op').length, errors: b.errors.length, allies: b.allyUnits.length });
+test(`performance: heavy 2-player boss field (18 ops, ~130 enemies alive) averages < ${BOSS_FIELD_MS_PER_TICK} ms/tick (best of 3)`, () => {
+  const P = realPools();
+  if (!ds.getStage('act2autochess_m01') || !ds.getWave('act1autochess_h07_01')) return;
+  const keys = ['enemy_1422_lrsldr', 'enemy_1427_lrnazg', 'enemy_1005_yokai', 'enemy_1042_frostd', 'enemy_1425_lrcmra', 'enemy_1040_bombd'].filter((k) => ds.getEnemy(k));
+  const extra = (routes) => Array.from({ length: 120 }, (_, i) => ({ time: (i % 20) * 0.25, enemyKey: keys[i % keys.length], routeIndex: i % routes.length, mods: { hpMul: 20 } }));
+  const mk = (seed) => realBattle(P, seed, { stageId: 'act2autochess_m01', waveId: 'act1autochess_h07_01', extra, units: 9 }).b;
+  for (let w = 0; w < 2; w++) { const b = mk(100 + w); while (b.time < 15) b.step(); }
+  const runs = [];
+  for (let r = 0; r < 3; r++) {
+    const b = mk(7);
+    let n = 0, peak = 0;
+    const t0 = performance.now();
+    while (!b.finished && b.time < 60) {
+      b.step();
+      if (++n % 3 === 0) { b.snapshot(); b.drainEvents(); }
+      peak = Math.max(peak, b.enemies.length);
     }
-    bossField = {
-      runs,
-      best: Math.min(...runs.map((x) => x.avg)),
-      bestCpu: Math.min(...runs.map((x) => x.cpu)),
-      same: new Set(runs.map((x) => `${x.n}/${x.peak}`)).size === 1,
-    };
-    // eslint-disable-next-line no-console
-    console.log(`bench boss field: ${runs[0].n} ticks, peak ${runs[0].peak} alive, ${runs[0].allies} allies, avg ${runs.map((x) => (x.avg * 1000).toFixed(1)).join(' / ')} µs/tick (best ${(bossField.best * 1000).toFixed(1)}; cpu best ${(bossField.bestCpu * 1000).toFixed(1)}; bar ${BOSS_FIELD_MS_PER_TICK} ms${process.env.CI ? ', CI' : ''}${PERF_RUN ? '' : ', not asserted: SP_PERF=1'})`);
+    runs.push({ avg: (performance.now() - t0) / n, n, peak, allies: b.allyUnits.length });
+    assert.ok(peak >= 100, `peak ${peak}`);
+    assert.equal(b.allyUnits.filter((u) => u.kind === 'op').length, 18);
+    assert.equal(b.errors.length, 0);
   }
-  return bossField;
-}
-
-test('heavy 2-player boss field (18 ops, ~130 enemies alive): the same battle three times, no errors', { skip: !hasBossField() && NO_BOSS_FIELD }, () => {
-  const { runs, same } = measureBossField();
-  for (const r of runs) {
-    assert.ok(r.peak >= 100, `peak ${r.peak}`);
-    assert.equal(r.ops, 18);
-    assert.equal(r.errors, 0);
-  }
-  assert.ok(same, 'the three runs are the same battle');
-});
-
-test(`performance: heavy 2-player boss field averages < ${BOSS_FIELD_MS_PER_TICK} ms/tick (best of 3)`, {
-  skip: !hasBossField() ? NO_BOSS_FIELD
-    : !PERF_RUN && `set SP_PERF=1 (a dedicated perf run): the ${BOSS_FIELD_MS_PER_TICK} ms bar is DESIGN §11's budget for a machine running this file alone, and an all-core parallel \`node --test\` on a shared box measures several times that for the same code`,
-}, () => {
-  const { best } = measureBossField();
-  assert.ok(best < BOSS_FIELD_MS_PER_TICK, `best ${best} ms/tick`);
+  const best = Math.min(...runs.map((x) => x.avg));
+  // eslint-disable-next-line no-console
+  console.log(`bench boss field: ${runs[0].n} ticks, peak ${runs[0].peak} alive, ${runs[0].allies} allies, avg ${runs.map((x) => (x.avg * 1000).toFixed(1)).join(' / ')} µs/tick (best ${(best * 1000).toFixed(1)}; bar ${BOSS_FIELD_MS_PER_TICK} ms${process.env.CI ? ', CI' : ''})`);
+  assert.equal(new Set(runs.map((x) => `${x.n}/${x.peak}`)).size, 1, 'the three runs are the same battle');
+  assert.ok(best < BOSS_FIELD_MS_PER_TICK, `best ${best} ms/tick of ${runs.map((x) => x.avg.toFixed(3)).join(', ')}`);
 });

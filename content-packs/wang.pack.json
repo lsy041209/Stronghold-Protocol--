@@ -1,0 +1,1268 @@
+{
+  "_README": "望（char_2027_wang）—— 特种·陷阱师，6★，外援干员。数据全部取自官方表，不凭印象。",
+  "_来源": "character_table.json（char_2027_wang）+ skill_table.json（skchr_wang_1/2/3）+ range_table.json（4-12），缓存于 .cache/",
+  "_⚠️为什么是 .pending": "这个包**故意没有启用**（文件名带 .pending，内容包工具只加载 *.json）。原因：望的 kit 还没写，而 kits_alt_tN.test.js 要求**每个可见干员的每个可选技能都有手工 spec** —— 直接 apply 会让那条测试变红。等 kit 写好后，把本文件改名为 wang.pack.json 再 apply 即可。",
+  "_面板口径": "tier 6 官方口径 = phase 2 / level 1；stats 按 character_table.phases[2] 关键帧插值到 Lv1（潜 0、信赖 0），与 docs/research/03-operators.json 的 meta.statFormula 一致。",
+  "_范围": "本体 E2 = 3-3（12 格）；S3 = 4-12（25 格 5×5；**rangeGrid 用官方 [row,col] 原样，切勿转置** —— 第一坐标=行偏移=引擎前进轴；**本体与精锐两处都要填成同一份**，精锐转置过 ⇒ 它会竖着铺）。S1/S2 无技能范围字段。",
+  "_未完成": "棋子（陷阱）本体尚未实现 —— 需要 token 记录或新实体类型。见 .workbuddy/ops-research/wang-spec.md 第六节（10 条实现难点）与第七节（用户给的 6 条棋子放置规则）。",
+  "pack": "wang",
+  "version": 1,
+  "targetBase": "0.1.3",
+  "note": "望（外援）—— 陷阱师：棋子系统 / 连线激活 / 弹药制（棋子本体待实现）",
+  "chess": [
+    {
+      "chessId": "chess_wang_a",
+      "charId": "char_2027_wang",
+      "tier": 6,
+      "_tier测试版": "⚠️ 与陈/星熊一致：测试期 3 阶且可见（他有 3 个技能，`tier <= 2` 的普通干员按 test/data.test.js 不许有 S3）。**3 阶是能带 3 技能的最低阶级。** ⚠️ **[2026-10-06 12:2x T-5 已落实上面这句「正式值」]** 现在就是 `tier 6 + visible:false`（用户裁：**正式版也要装这四位外援**）——「测试期」三个字已过期，保留作历史。",
+      "_tier正式": 6,
+      "name": "望",
+      "appellation": "Wang",
+      "rarity": 6,
+      "profession": "SPECIAL",
+      "subProfessionId": "traper",
+      "subProfessionName": "陷阱师",
+      "position": "RANGED",
+      "nationId": "yan",
+      "bonds": [
+        "yanShip"
+      ],
+      "garrisonIds": [],
+      "tokens": [
+        "token_10064_wang_stone1"
+      ],
+      "_tokens": "棋子 —— 玩家待部署区里可手部署的装置（placeable），不占部署位",
+      "price": 4,
+      "sellPrice": 1,
+      "isReserve": true,
+      "visible": false,
+      "isHidden": false,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_wang_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 1169,
+        "atk": 482,
+        "def": 144,
+        "res": 0,
+        "cost": 12,
+        "blockCnt": 1,
+        "bat": 0.85,
+        "aspd": 100,
+        "respawnTime": 70,
+        "moveSpeed": 1,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "_stats": "精英2 Lv1（官方插值）。E2 满级(90) 为 1480/589/174/0。攻击间隔 0.85s 是陷阱师本职。",
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "dmgType": "arts",
+      "_dmgType": "棋子造成的是法术伤害（S1/S2/S3 的描述都是「法术伤害」）。",
+      "attackKind": "ranged",
+      "projectile": "orb",
+      "canHitFly": true,
+      "targetPriority": null,
+      "rangeId": "3-3",
+      "rangeGrid": [
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -1,
+          3
+        ]
+      ],
+      "trait": {
+        "desc": "可以使用陷阱来协助作战，但陷阱无法放置于敌人已在的格子中",
+        "descRaw": "可以使用陷阱来协助作战，但陷阱无法放置于敌人已在的格子中",
+        "bb": {},
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "_trait": "⚠️ 特性写「陷阱」，但天赋/技能正文一律写「棋子」—— PRTS 原文这两种叫法并存，是否为同一物件原文无法判定。此处保留原文用词，未擅自统一。",
+      "talents": [
+        {
+          "name": "铸子",
+          "desc": "可以使用6枚棋子（最多拥有7枚），棋子相连时相互激活，敌人进入激活的棋子所在地块时触发其效果；手动部署棋子时，望在相邻位置额外部署一枚棋子（最多9枚，可以且优先部署在有敌人的不可部署地块）",
+          "descRaw": "可以使用6枚棋子（最多拥有7枚），棋子相连时相互激活，敌人进入激活的棋子所在地块时触发其效果；手动部署棋子时，望在相邻位置额外部署一枚棋子（最多9枚，可以且优先部署在有敌人的不可部署地块）",
+          "bb": {
+            "cnt": 6,
+            "max_cnt": 0,
+            "interval": 0,
+            "attack@max_spawn_cnt": 9
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        },
+        {
+          "name": "料敌机先",
+          "desc": "棋子激活时所在的连续直线上每有一枚棋子，直线上所有棋子造成伤害提升10%并无视敌人9点法术抗性（最多叠加3次）",
+          "descRaw": "棋子激活时所在的连续直线上每有一枚棋子，直线上所有棋子造成伤害提升10%并无视敌人9点法术抗性（最多叠加3次）",
+          "bb": {
+            "attack@per_atk_scale": 0.1,
+            "attack@per_magic_resist_penetrate_fixed": 9,
+            "attack@max_trigger_cnt": 3
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        }
+      ],
+      "_talents": "官方 E2 档（PHASE_2、潜0）原始黑板。天赋1 的 `interval: 0` 说明**没有再充能时间**（棋子不是按时间回复的）。官方法穿是「造成伤害前临时加算、造成后立即清除（无论是否命中）」。",
+      "skill": {
+        "skillId": "skchr_wang_1",
+        "iconId": "skchr_wang_1",
+        "name": "取势",
+        "level": 4,
+        "desc": "被动效果：棋子触发时使目标敌人停顿且每秒受到相当于望攻击力的105%的法术伤害，持续6.5秒\n主动效果：立即获得两枚棋子",
+        "descRaw": "被动效果：棋子触发时使目标敌人<$ba.sluggish>停顿</>且每秒受到相当于望攻击力的<@ba.vup>105%</>的法术伤害，持续<@ba.vup>6.5</>秒\n主动效果：立即获得两枚棋子",
+        "skillType": "AUTO",
+        "durationType": "NONE",
+        "duration": -1,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 21,
+        "initSp": 0,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "cnt": 2,
+          "attack@atk_scale": 1.05,
+          "attack@sluggish": 6.5
+        },
+        "bbStr": {},
+        "rangeId": null,
+        "rangeGrid": null,
+        "prefabId": "skchr_wang_1",
+        "trigger": {
+          "rule": "DEFAULT"
+        },
+        "canHitFly": true
+      },
+      "skills": [
+        {
+          "skillId": "skchr_wang_1",
+          "iconId": "skchr_wang_1",
+          "name": "取势",
+          "level": 4,
+          "desc": "被动效果：棋子触发时使目标敌人停顿且每秒受到相当于望攻击力的105%的法术伤害，持续6.5秒\n主动效果：立即获得两枚棋子",
+          "descRaw": "被动效果：棋子触发时使目标敌人<$ba.sluggish>停顿</>且每秒受到相当于望攻击力的<@ba.vup>105%</>的法术伤害，持续<@ba.vup>6.5</>秒\n主动效果：立即获得两枚棋子",
+          "isDefault": true,
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 21,
+          "initSp": 0,
+          "bb": {
+            "cnt": 2,
+            "attack@atk_scale": 1.05,
+            "attack@sluggish": 6.5
+          },
+          "trigger": {
+            "rule": "DEFAULT"
+          },
+          "canHitFly": true
+        },
+        {
+          "skillId": "skchr_wang_2",
+          "iconId": "skchr_wang_2",
+          "name": "连星",
+          "level": 4,
+          "desc": "被动效果：棋子触发时，对连线方向上两侧3格范围内的敌人造成相当于攻击力的420%的法术伤害，并使其6秒内移动速度降低35%\n主动效果：立即获得两枚棋子",
+          "descRaw": "被动效果：棋子触发时，对连线方向上两侧3格范围内的敌人造成相当于攻击力的<@ba.vup>420%</>的法术伤害，并使其<@ba.vup>6</>秒内移动速度降低<@ba.vup>35%</>\n主动效果：立即获得两枚棋子",
+          "isDefault": false,
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 17,
+          "initSp": 0,
+          "bb": {
+            "cnt": 2,
+            "attack@atk_scale": 4.2,
+            "attack@move_speed": -0.35,
+            "attack@duration": 6,
+            "display_move_speed": 0.35
+          },
+          "trigger": {
+            "rule": "DEFAULT"
+          },
+          "canHitFly": true
+        },
+        {
+          "skillId": "skchr_wang_3",
+          "iconId": "skchr_wang_3",
+          "name": "天下劫",
+          "level": 4,
+          "desc": "被动效果：棋子的触发和伤害范围扩大，造成相当于攻击力290%的法术伤害\n主动效果：停止攻击但攻击范围扩大；立即获得8枚棋子，然后将超出上限的棋子优先部署在范围内敌人所在位置；在攻击范围内手动部署棋子时可部署至敌人所在位置，且第一天赋额外至多部署3枚棋子并消耗等量弹药\n装有20发弹药，手动停止或棋子耗尽后技能结束，剩余的弹药返还为棋子",
+          "descRaw": "被动效果：棋子的触发和伤害范围扩大，造成相当于攻击力<@ba.vup>290%</>的法术伤害\n主动效果：<@ba.vdown>停止攻击</>但<@ba.vup>攻击范围扩大</>；立即获得<@ba.vup>8</>枚棋子，然后将超出上限的棋子<@ba.vup>优先部署在范围内敌人所在位置</>；在攻击范围内手动部署棋子时可<@ba.vup>部署至敌人所在位置</>，且第一天赋<@ba.vup>额外至多部署3枚棋子</>并消耗等量弹药\n<@ba.rem>装有20发弹药，手动停止或棋子耗尽后技能结束，剩余的弹药返还为棋子</>",
+          "isDefault": false,
+          "skillType": "MANUAL",
+          "durationType": "AMMO",
+          "duration": 0,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 57,
+          "initSp": 38,
+          "bb": {
+            "cnt": 8,
+            "trigger_time": 20,
+            "atk_scale": 2.9,
+            "ammo_discard_limit_count": 1
+          },
+          "rangeId": "4-12",
+          "rangeGrid": [
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ],
+            [
+              -2,
+              2
+            ],
+            [
+              -2,
+              3
+            ],
+            [
+              -2,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -1,
+              3
+            ],
+            [
+              -1,
+              4
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              1,
+              4
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              4
+            ]
+          ],
+          "trigger": {
+            "rule": "DEFAULT"
+          },
+          "canHitFly": true
+        }
+      ],
+      "_skills": "S1/S2/S3 取官方 L4（普通记录 skillLevel=4）。S3 是弹药制（durationType: AMMO，duration 0），对应官方「装有 20 发弹药」—— 参照游戏里同样用 AMMO 的干员（如 chess_char_1_01_a 的 skchr_inside_2）。",
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_2027_wang",
+        "portrait": "char_2027_wang_1",
+        "spine": "char_2027_wang",
+        "skillIcon": "skchr_wang_3",
+        "subProfIcon": "sub_traper_icon"
+      },
+      "_assets": "⚠️ 官方命名（_a 用 _1、_b 用 _2、spine 同名）。但 0.1.3 客户端的素材集里**没有**这位的美术（assets.json 里 char_2027_wang 出现 0 次），所以目前会退回首字占位符「望」。补进美术后不用改包。subProfIcon 按 sub_<分支>_icon 的规律写，**尚未核对**（数据里没有别的陷阱师可以对照）。",
+      "elite": {
+        "name": "望",
+        "skills": [
+          {
+            "skillId": "skchr_wang_1",
+            "iconId": "skchr_wang_1",
+            "name": "取势",
+            "level": 7,
+            "desc": "被动效果：棋子触发时使目标敌人停顿且每秒受到相当于望攻击力的105%的法术伤害，持续6.5秒\n主动效果：立即获得两枚棋子",
+            "descRaw": "被动效果：棋子触发时使目标敌人<$ba.sluggish>停顿</>且每秒受到相当于望攻击力的<@ba.vup>105%</>的法术伤害，持续<@ba.vup>6.5</>秒\n主动效果：立即获得两枚棋子",
+            "isDefault": true,
+            "skillType": "AUTO",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 21,
+            "initSp": 0,
+            "bb": {
+              "cnt": 2,
+              "attack@atk_scale": 1.05,
+              "attack@sluggish": 6.5
+            },
+            "trigger": {
+              "rule": "DEFAULT"
+            },
+            "canHitFly": true
+          },
+          {
+            "skillId": "skchr_wang_2",
+            "iconId": "skchr_wang_2",
+            "name": "连星",
+            "level": 7,
+            "desc": "被动效果：棋子触发时，对连线方向上两侧3格范围内的敌人造成相当于攻击力的480%的法术伤害，并使其6秒内移动速度降低40%\n主动效果：立即获得两枚棋子",
+            "descRaw": "被动效果：棋子触发时，对连线方向上两侧3格范围内的敌人造成相当于攻击力的<@ba.vup>480%</>的法术伤害，并使其<@ba.vup>6</>秒内移动速度降低<@ba.vup>40%</>\n主动效果：立即获得两枚棋子",
+            "isDefault": false,
+            "skillType": "AUTO",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 16,
+            "initSp": 0,
+            "bb": {
+              "cnt": 2,
+              "attack@atk_scale": 4.8,
+              "attack@move_speed": -0.4,
+              "attack@duration": 6,
+              "display_move_speed": 0.4
+            },
+            "trigger": {
+              "rule": "DEFAULT"
+            },
+            "canHitFly": true
+          },
+          {
+            "skillId": "skchr_wang_3",
+            "iconId": "skchr_wang_3",
+            "name": "天下劫",
+            "level": 7,
+            "desc": "被动效果：棋子的触发和伤害范围扩大，造成相当于攻击力320%的法术伤害\n主动效果：停止攻击但攻击范围扩大；立即获得8枚棋子，然后将超出上限的棋子优先部署在范围内敌人所在位置；在攻击范围内手动部署棋子时可部署至敌人所在位置，且第一天赋额外至多部署3枚棋子并消耗等量弹药\n装有20发弹药，手动停止或棋子耗尽后技能结束，剩余的弹药返还为棋子",
+            "descRaw": "被动效果：棋子的触发和伤害范围扩大，造成相当于攻击力<@ba.vup>320%</>的法术伤害\n主动效果：<@ba.vdown>停止攻击</>但<@ba.vup>攻击范围扩大</>；立即获得<@ba.vup>8</>枚棋子，然后将超出上限的棋子<@ba.vup>优先部署在范围内敌人所在位置</>；在攻击范围内手动部署棋子时可<@ba.vup>部署至敌人所在位置</>，且第一天赋<@ba.vup>额外至多部署3枚棋子</>并消耗等量弹药\n<@ba.rem>装有20发弹药，手动停止或棋子耗尽后技能结束，剩余的弹药返还为棋子</>",
+            "isDefault": false,
+            "skillType": "MANUAL",
+            "durationType": "AMMO",
+            "duration": 0,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 54,
+            "initSp": 38,
+            "bb": {
+              "cnt": 8,
+              "trigger_time": 20,
+              "atk_scale": 3.2,
+              "ammo_discard_limit_count": 1
+            },
+            "rangeId": "4-12",
+            "rangeGrid": [
+              [
+                -2,
+                0
+              ],
+              [
+                -2,
+                1
+              ],
+              [
+                -2,
+                2
+              ],
+              [
+                -2,
+                3
+              ],
+              [
+                -2,
+                4
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -1,
+                2
+              ],
+              [
+                -1,
+                3
+              ],
+              [
+                -1,
+                4
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                1,
+                2
+              ],
+              [
+                1,
+                3
+              ],
+              [
+                1,
+                4
+              ],
+              [
+                2,
+                0
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                2,
+                3
+              ],
+              [
+                2,
+                4
+              ]
+            ],
+            "trigger": {
+              "rule": "DEFAULT"
+            },
+            "canHitFly": true
+          }
+        ],
+        "modules": [
+          {
+            "uniEquipId": "uniequip_002_wang",
+            "name": "兽形棋盒",
+            "typeName": "TRP-X",
+            "typeIcon": "trp-x",
+            "icon": "uniequip_002_wang",
+            "isDefault": true,
+            "level": 1,
+            "attr": {
+              "maxHp": 100,
+              "atk": 36
+            },
+            "_attr": "官方「兽形棋盒」**一级**数据 = 生命100/攻击36（二级 130/50、三级 150/60）。用一级是因为包工具派生精锐固定写 status.equipLevel=1，而测试断言 module.level === status.equipLevel。",
+            "traitOverride": {
+              "desc": "可以使用部署费用更低（-1）的陷阱来协助作战，但陷阱无法放置于敌人已在的格子中，可同时部署的陷阱数量提升（+1）",
+              "descRaw": "可以使用部署费用更低（-1）的陷阱来协助作战，但陷阱无法放置于敌人已在的格子中，可同时部署的陷阱数量提升（+1）",
+              "bb": {},
+              "bbStr": {},
+              "rangeGrid": null,
+              "moduleDesc": "陷阱部署费用 -1，可同时部署的陷阱数量 +1",
+              "moduleDescRaw": "陷阱部署费用<@ba.vup>-1</>，可同时部署的陷阱数量<@ba.vup>+1</>"
+            },
+            "talentChanges": [
+              {
+                "talentIndex": 1,
+                "name": "料敌机先",
+                "desc": "棋子激活时所在的连续直线上每有一枚棋子，直线上所有棋子造成伤害提升12%并无视敌人11点法术抗性（最多叠加3次）",
+                "descRaw": "棋子激活时所在的连续直线上每有一枚棋子，直线上所有棋子造成伤害提升<@ba.vup>12%</>并无视敌人<@ba.vup>11</>点法术抗性（最多叠加3次）",
+                "bb": {
+                  "attack@per_atk_scale": 0.12,
+                  "attack@per_magic_resist_penetrate_fixed": 11,
+                  "attack@max_trigger_cnt": 3
+                },
+                "bbStr": {},
+                "hidden": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "enemies": [],
+  "_⚠️启用前必须做": [
+    "1) 写望的 kit，并让 chess_wang_a 的三个技能都有手工 spec（否则 kits_alt_tN.test.js 的 coverage 会红）。",
+    "2) 实现「棋子」—— 建议先做成「一种召唤物」（复用 battle.spawnToken，照赫默/凯瑟琳），把「跟子」近似成同类实体并在代码里标注：原作是弹道、不占空位、伤害来源归望。",
+    "3) 建 token 记录并在本文件的 tokens 里填 id。",
+    "4) 核对 sub_traper_icon 是否是正确的子职业图标名。",
+    "5) 改名去掉 .pending，跑 content-packs.mjs check 与 apply，再跑 test/content/kits_alt_t3.test.js。"
+  ],
+  "tokens": [
+    {
+      "tokenId": "token_10064_wang_stone1",
+      "kind": "summon",
+      "name": "棋子",
+      "appellation": "stones",
+      "desc": "敌人进入激活的棋子所在地块时触发其效果",
+      "descRaw": "敌人进入激活的棋子所在地块时触发其效果",
+      "profession": "TOKEN",
+      "subProfessionId": "notchar1",
+      "position": "MELEE",
+      "displayType": "DEFAULT",
+      "placeable": true,
+      "ownerRange": false,
+      "owners": [
+        "chess_wang_a",
+        "chess_wang_b"
+      ],
+      "stats": {
+        "maxHp": 1000,
+        "atk": 100,
+        "def": 0,
+        "res": 0,
+        "cost": 3,
+        "blockCnt": 0,
+        "bat": 1,
+        "aspd": 100,
+        "respawnTime": 5,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 6,
+        "deckStack": 0
+      },
+      "rangeGrid": [
+        [
+          0,
+          0
+        ]
+      ],
+      "dmgType": "phys",
+      "attackKind": "ranged",
+      "projectile": "arrow",
+      "canHitFly": true,
+      "skill": null,
+      "deployLimit": 6,
+      "count": 3,
+      "abnormal": [],
+      "variants": {
+        "chess_wang_a": {
+          "phase": 1,
+          "level": 80,
+          "stats": {
+            "maxHp": 1000,
+            "atk": 100,
+            "def": 0,
+            "res": 0,
+            "cost": 3,
+            "blockCnt": 0,
+            "bat": 1,
+            "aspd": 100,
+            "respawnTime": 3,
+            "spRecovery": 1,
+            "hpRecoveryPerSec": 0,
+            "moveSpeed": 1,
+            "tauntLevel": 0,
+            "massLevel": 0,
+            "deployLimit": 6,
+            "deckStack": 3
+          },
+          "immunities": {
+            "stun": false,
+            "silence": false,
+            "sleep": false,
+            "frozen": false,
+            "levitate": false
+          },
+          "rangeGrid": [
+            [
+              0,
+              0
+            ]
+          ],
+          "trait": {
+            "desc": "不会受到攻击",
+            "descRaw": "不会受到攻击",
+            "bb": {},
+            "bbStr": {}
+          },
+          "dmgType": "phys",
+          "attackKind": "ranged",
+          "projectile": "arrow",
+          "canHitFly": true,
+          "targetPriority": null,
+          "skill": {
+            "skillId": "sktok_wang_1",
+            "iconId": "sktok_wang_1",
+            "name": "取势",
+            "level": 7,
+            "desc": null,
+            "descRaw": null,
+            "skillType": "PASSIVE",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "ON_DEPLOY",
+            "spCost": 0,
+            "initSp": 0,
+            "maxChargeTime": 1,
+            "increment": 1,
+            "bb": {
+              "atk_scale": 1.2,
+              "sluggish": 6.5
+            },
+            "bbStr": {},
+            "rangeId": null,
+            "rangeGrid": null,
+            "prefabId": "sktok_wang_1",
+            "trigger": {
+              "rule": "DEFAULT",
+              "rawRule": "DEFAULT",
+              "customRangeGrid": null
+            },
+            "index": 0
+          },
+          "talents": [],
+          "count": 1,
+          "sources": [
+            "skill",
+            "display"
+          ],
+          "bySkill": {
+            "1": {
+              "skill": {
+                "skillId": "sktok_wang_2",
+                "iconId": "sktok_wang_2",
+                "name": "连星",
+                "level": 7,
+                "desc": null,
+                "descRaw": null,
+                "skillType": "PASSIVE",
+                "durationType": "NONE",
+                "duration": -1,
+                "spType": "ON_DEPLOY",
+                "spCost": 0,
+                "initSp": 0,
+                "maxChargeTime": 1,
+                "increment": 1,
+                "bb": {
+                  "atk_scale": 4.8,
+                  "move_speed": -0.4,
+                  "display_move_speed": 0.4,
+                  "duration": 6,
+                  "tile_count": 6
+                },
+                "bbStr": {},
+                "rangeId": null,
+                "rangeGrid": null,
+                "prefabId": "sktok_wang_2",
+                "trigger": {
+                  "rule": "DEFAULT",
+                  "rawRule": "DEFAULT",
+                  "customRangeGrid": null
+                },
+                "index": 1
+              },
+              "count": 1,
+              "sources": [
+                "skill",
+                "display"
+              ]
+            },
+            "2": {
+              "skill": {
+                "skillId": "sktok_wang_3",
+                "iconId": "sktok_wang_3",
+                "name": "天下劫",
+                "level": 7,
+                "desc": null,
+                "descRaw": null,
+                "skillType": "PASSIVE",
+                "durationType": "NONE",
+                "duration": -1,
+                "spType": "ON_DEPLOY",
+                "spCost": 0,
+                "initSp": 0,
+                "maxChargeTime": 1,
+                "increment": 1,
+                "bb": {
+                  "atk_scale": 3.2
+                },
+                "bbStr": {},
+                "rangeId": null,
+                "rangeGrid": null,
+                "prefabId": "sktok_wang_3",
+                "trigger": {
+                  "rule": "DEFAULT",
+                  "rawRule": "DEFAULT",
+                  "customRangeGrid": null
+                },
+                "index": 2
+              },
+              "count": 1,
+              "sources": [
+                "skill",
+                "display"
+              ]
+            }
+          },
+          "byModule": {}
+        },
+        "chess_wang_b": {
+          "phase": 2,
+          "level": 90,
+          "stats": {
+            "maxHp": 1000,
+            "atk": 100,
+            "def": 0,
+            "res": 0,
+            "cost": 3,
+            "blockCnt": 0,
+            "bat": 1,
+            "aspd": 100,
+            "respawnTime": 2,
+            "spRecovery": 1,
+            "hpRecoveryPerSec": 0,
+            "moveSpeed": 1,
+            "tauntLevel": 0,
+            "massLevel": 0,
+            "deployLimit": 6,
+            "deckStack": 3
+          },
+          "immunities": {
+            "stun": false,
+            "silence": false,
+            "sleep": false,
+            "frozen": false,
+            "levitate": false
+          },
+          "rangeGrid": [
+            [
+              0,
+              0
+            ]
+          ],
+          "trait": {
+            "desc": "不会受到攻击",
+            "descRaw": "不会受到攻击",
+            "bb": {},
+            "bbStr": {}
+          },
+          "dmgType": "phys",
+          "attackKind": "ranged",
+          "projectile": "arrow",
+          "canHitFly": true,
+          "targetPriority": null,
+          "skill": {
+            "skillId": "sktok_wang_1",
+            "iconId": "sktok_wang_1",
+            "name": "取势",
+            "level": 7,
+            "desc": null,
+            "descRaw": null,
+            "skillType": "PASSIVE",
+            "durationType": "NONE",
+            "duration": -1,
+            "spType": "ON_DEPLOY",
+            "spCost": 0,
+            "initSp": 0,
+            "maxChargeTime": 1,
+            "increment": 1,
+            "bb": {
+              "atk_scale": 1.2,
+              "sluggish": 6.5
+            },
+            "bbStr": {},
+            "rangeId": null,
+            "rangeGrid": null,
+            "prefabId": "sktok_wang_1",
+            "trigger": {
+              "rule": "DEFAULT",
+              "rawRule": "DEFAULT",
+              "customRangeGrid": null
+            },
+            "index": 0
+          },
+          "talents": [],
+          "count": 1,
+          "sources": [
+            "skill",
+            "display"
+          ],
+          "bySkill": {
+            "1": {
+              "skill": {
+                "skillId": "sktok_wang_2",
+                "iconId": "sktok_wang_2",
+                "name": "连星",
+                "level": 7,
+                "desc": null,
+                "descRaw": null,
+                "skillType": "PASSIVE",
+                "durationType": "NONE",
+                "duration": -1,
+                "spType": "ON_DEPLOY",
+                "spCost": 0,
+                "initSp": 0,
+                "maxChargeTime": 1,
+                "increment": 1,
+                "bb": {
+                  "atk_scale": 4.8,
+                  "move_speed": -0.4,
+                  "display_move_speed": 0.4,
+                  "duration": 6,
+                  "tile_count": 6
+                },
+                "bbStr": {},
+                "rangeId": null,
+                "rangeGrid": null,
+                "prefabId": "sktok_wang_2",
+                "trigger": {
+                  "rule": "DEFAULT",
+                  "rawRule": "DEFAULT",
+                  "customRangeGrid": null
+                },
+                "index": 1
+              },
+              "count": 1,
+              "sources": [
+                "skill",
+                "display"
+              ]
+            },
+            "2": {
+              "skill": {
+                "skillId": "sktok_wang_3",
+                "iconId": "sktok_wang_3",
+                "name": "天下劫",
+                "level": 7,
+                "desc": null,
+                "descRaw": null,
+                "skillType": "PASSIVE",
+                "durationType": "NONE",
+                "duration": -1,
+                "spType": "ON_DEPLOY",
+                "spCost": 0,
+                "initSp": 0,
+                "maxChargeTime": 1,
+                "increment": 1,
+                "bb": {
+                  "atk_scale": 3.2
+                },
+                "bbStr": {},
+                "rangeId": null,
+                "rangeGrid": null,
+                "prefabId": "sktok_wang_3",
+                "trigger": {
+                  "rule": "DEFAULT",
+                  "rawRule": "DEFAULT",
+                  "customRangeGrid": null
+                },
+                "index": 2
+              },
+              "count": 1,
+              "sources": [
+                "skill",
+                "display"
+              ]
+            }
+          },
+          "byModule": {
+            "none": {
+              "stats": {
+                "maxHp": 1000,
+                "atk": 100,
+                "def": 0,
+                "res": 0,
+                "cost": 3,
+                "blockCnt": 0,
+                "bat": 1,
+                "aspd": 100,
+                "respawnTime": 2,
+                "spRecovery": 1,
+                "hpRecoveryPerSec": 0,
+                "moveSpeed": 1,
+                "tauntLevel": 0,
+                "massLevel": 0,
+                "deployLimit": 1,
+                "deckStack": 3
+              },
+              "trait": {
+                "desc": "不会受到攻击",
+                "descRaw": "不会受到攻击",
+                "bb": {},
+                "bbStr": {}
+              },
+              "talents": []
+            }
+          }
+        }
+      },
+      "assets": {
+        "spine": "token_10064_wang_stone1"
+      },
+      "_来源": "官方 character_table.json / skill_table.json 的 token_10064_wang_stone1 + PRTS《棋子》页",
+      "_机制": [
+        "棋子是「装置」类召唤物，**出现在玩家待部署区**（tokens.json 的 placeable: true），",
+        "像普通棋子一样手动部署，且不占部署位（引擎 gamedata.placeableTokens + PlayerState 已实现）。",
+        "三个技能都是被动（spType=8 / spCost=0 / dur=-1），敌人进入棋子所在地块时触发。",
+        "※ 达到精英1阶段后再部署时间变为 3 秒（精2 = 2 秒）。",
+        "※ 技能伤害始终借用持有者的攻击力：倍率 = 持有者攻击力 ÷ 自身攻击力，伤害来源仍是召唤物自身。",
+        "※ 若自身攻击力为 0，即使持有者攻击力不为 0，此次伤害也无法产生（倍率强制 100%）。"
+      ]
+    }
+  ],
+  "spine": {
+    "char_2027_wang": {
+      "name": "望",
+      "avatar": "/assets/char/avatar/char_2027_wang.webp",
+      "avatarE2": "/assets/char/avatar/char_2027_wang_2.webp",
+      "portrait": "/assets/char/portrait/char_2027_wang_1.webp",
+      "portraitE2": "/assets/char/portrait/char_2027_wang_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_2027_wang/front/char_2027_wang.skel",
+          "atlas": "/assets/spine/op/char_2027_wang/front/char_2027_wang.atlas",
+          "textures": [
+            "/assets/spine/op/char_2027_wang/front/char_2027_wang.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_1_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack_1_A",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack_1_A",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Attack_1_A",
+                "end": null,
+                "via": "attack",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Attack_A",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_1_A": 0.833,
+            "Attack_1_B": 0.833,
+            "Attack_2_A": 0.833,
+            "Attack_2_B": 0.833,
+            "Default": 0,
+            "Default_2": 0,
+            "Die": 1,
+            "Idle": 8.333,
+            "Idle_2": 8.333,
+            "Skill_3_Attack_A": 2.2,
+            "Skill_3_Attack_B": 2.2,
+            "Skill_3_Begin": 0.167,
+            "Skill_3_End": 0.267,
+            "Skill_3_Idle": 3.333,
+            "Start": 1,
+            "Start_2": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_1_A": [
+              0.3
+            ],
+            "Attack_1_B": [
+              0.3
+            ],
+            "Attack_2_A": [
+              0.3
+            ],
+            "Attack_2_B": [
+              0.3
+            ],
+            "Skill_3_Attack_A": [
+              1.033
+            ],
+            "Skill_3_Attack_B": [
+              1.033
+            ]
+          },
+          "bounds": {
+            "x": -606.915,
+            "y": -2.046,
+            "width": 898.1,
+            "height": 509.718
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_2027_wang/back/char_2027_wang.skel",
+          "atlas": "/assets/spine/op/char_2027_wang/back/char_2027_wang.atlas",
+          "textures": [
+            "/assets/spine/op/char_2027_wang/back/char_2027_wang.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_1_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Attack_1_A",
+              "end": null,
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Attack_1_A",
+                "end": null,
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Attack_1_A",
+                "end": null,
+                "via": "attack",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Attack_A",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_1_A": 0.833,
+            "Attack_1_B": 0.833,
+            "Attack_2_A": 0.833,
+            "Attack_2_B": 0.833,
+            "Default": 0,
+            "Default_2": 0,
+            "Idle": 1.667,
+            "Idle_2": 1.667,
+            "Skill_3_Attack_A": 2.2,
+            "Skill_3_Attack_B": 2.2,
+            "Skill_3_Begin": 0.167,
+            "Skill_3_End": 0.267,
+            "Skill_3_Idle": 1.667,
+            "Start": 1,
+            "Start_2": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_1_A": [
+              0.3
+            ],
+            "Attack_1_B": [
+              0.3
+            ],
+            "Attack_2_A": [
+              0.3
+            ],
+            "Attack_2_B": [
+              0.3
+            ],
+            "Skill_3_Attack_A": [
+              1.033
+            ],
+            "Skill_3_Attack_B": [
+              1.033
+            ]
+          },
+          "bounds": {
+            "x": -606.915,
+            "y": -2.046,
+            "width": 1779.387,
+            "height": 509.718
+          }
+        }
+      },
+      "skins": {
+        "char_2027_wang#2": {
+          "name": "精英2",
+          "group": "默认服装",
+          "avatar": "/assets/char/skin_avatar/char_2027_wang_2.webp"
+        }
+      }
+    }
+  }
+}

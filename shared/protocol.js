@@ -2,6 +2,8 @@
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
 
 import { DIFFICULTIES, NAME_MAX_LEN, ROOM_CODE_LEN, MAX_SEATS, EMOTES, GEO } from './constants.js';
+import { isDroppableChess } from './standIn.js';
+import { diySlotIds, validateDiyPicks } from './diy.js';
 
 // ---- tiny validators -------------------------------------------------------
 const isInt = (v, lo = -Infinity, hi = Infinity) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -22,6 +24,49 @@ const isMap = (v, max, key, val) => {
   return true;
 };
 const isList = (v, max, item) => Array.isArray(v) && v.length <= max && v.every(item);
+
+// ---- 房间内打字聊天 (D-3): room.chat { text } ----------------------------------------------------------------
+/**
+ * Limits of the in-room text chat (D-3; user 2026-10-07 07:0x: 「对局中放个聊天的面板…观战者不可发言（战斗中死了而
+ * 观战的可以），重进房间要看到」).
+ *
+ *   · `text`    — the cap the SERVER truncates to, counted in **Unicode code points** (not bytes, not UTF-16 units:
+ *                 `[...s].slice(0, text)` — an emoji is 1 code point / 2 units). Like NAME_MAX_LEN it is a display cap,
+ *                 so an overlong message is TRUNCATED, never refused (`server/net.js` sanitizeChat).
+ *   · `inbound` — the structural frame guard of `validateC2S`: a longer string is a malformed request (BAD_MSG). It is
+ *                 deliberately far above `text` so the truncation path stays the normal one.
+ *   · `history` — the per-room **in-memory** ring buffer replayed to one session on a resync as
+ *                 `chat.history { messages }` (server/lobby.js onHello → Room.addChat).
+ *
+ * 🔴 Chat is NEVER persisted: nothing on this path touches server/stats.js / server/ops.js (the snapshot whitelist has
+ * no chat field either) — test/lobby-chat.test.js ⑧ pins that with a sentinel string.
+ */
+export const CHAT_LIMITS = Object.freeze({ text: 120, inbound: 4096, history: 50 });
+// ---- 🆕 2026-10-08 快捷聊天的短语 id 形状（D-3 那条口径的姊妹）：逗号分隔、最多 3 个、每个 1–32 位 [a-z0-9_]。
+//      **真正的白名单在服务端**（config.quickPhrases）—— 这里只挡"形状"，防止把任意文本当 id 送进来。
+export const QUICK_MSG_LIMITS = Object.freeze({ ids: 3, idLen: 32 });
+
+// 🆕 2026-10-09 W-6 头像 id 的**形状**：小写 slug、≤64、**可空**（空 = 清掉回默认字形）。
+//   ⚠️ 字符集**故意不含** `/ . :` ⇒ URL / 路径 / 带扩展名的文件名在这一层就被挡掉（协议里永不出现路径）。
+//   **真表校验**（在不在 manifest 里）由服务端做：`server/lobby.js avatar`。
+export const isAvatarId = (v) => typeof v === 'string' && v.length <= 64 && (v === '' || /^[a-z0-9_]{1,64}$/.test(v));
+
+// 🆕 2026-10-08 `room.quickMsg` 的可选参数：**一个短串**（无参句式不带它）。
+//   它不是自由文本 —— 服务端只做长度/空白/控制字符校验，渲染在接收端（文案见 public/i18n/*）。
+export const isQuickArg = (v) => typeof v === 'string' && v.length <= 24 && !/[\u0000-\u001f\u007f]/.test(v);
+
+// 🆕 2026-10-08 聊天模式：`room.state.chatMode` 与 `room.create.chatMode` 共用这一个白名单。
+//   'open' = 打字 + 短语都行（默认）｜'quick' = 只允许快捷短语（服务端强制，见 server/lobby.js chat）。
+//   ⚠️ 留 `'off'`（短语也禁）在表里：形状按三态留，将来要用不必再改协议。
+export const CHAT_MODES = Object.freeze(['open', 'quick', 'off']);
+export const isChatMode = (v) => typeof v === 'string' && CHAT_MODES.includes(v);
+// ⚠️ 字符集含**大写**：用户 2026-10-08 裁定 id 就用 `niceOne` / `myBad`（camelCase），**不改名**。
+//   🔴 2026-10-08 第 54 轮 A 实测补记：这条**曾经只写 `[a-z0-9_]`**（注释与代码不一致，B12 抓到过），
+//      而我第一版"修"它的脚本**没真正落地** ⇒ 服务端会把 `niceOne`/`myBad` 判 `BAD_MSG`、**判据照不出来**。
+//      ⇒ 现在真的改成含大写；并加 `test/lobby-quickchat.test.js` ⑤b（用真表 `QUICK_IDS` 逐条跑 `isQuickId`）钉住。
+export const isQuickId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 128
+  && v.split(',').length <= QUICK_MSG_LIMITS.ids
+  && v.split(',').every((s) => /^[A-Za-z0-9_]{1,32}$/.test(s));
 
 // ---- client-side combat (DESIGN §14): b.progress / b.result payloads -------------------------------------------
 
@@ -67,21 +112,11 @@ export function isBattleResult(v) {
  * (known visible chess, legal skill index for the normal AND the elite status, legal module of the elite) is
  * `checkLoadout` — used by the server (lobby, match) and by the client to sanitise a stored loadout before sending.
  */
-export const LOADOUT_LIMITS = Object.freeze({ entries: 160, skillIndex: 9, reserveSlots: 2 });
-/**
- * 外援干员 (reserve operators): the tiers whose rows carry reserve slots, and how many slots each row has. A chess
- * marked `isReserve: true` in the data may be equipped in one of them; the entry then carries `reserve: <tier>`, which
- * puts it into the match pool at THAT tier's copy count (so its shop odds match the tier's ordinary chess).
- */
-export const RESERVE_TIERS = Object.freeze([5, 6]);
-/** Whether `v` is a legal reserve-slot tier. */
-export const isReserveTier = (v) => isInt(v) && RESERVE_TIERS.includes(v);
+export const LOADOUT_LIMITS = Object.freeze({ entries: 160, skillIndex: 9 });
 /** The "no module" choice of an elite (模组: 不装备). */
 export const MODULE_NONE = 'none';
-const isLoadoutEntry = (e) => isPlain(e) && Object.keys(e).length > 0
-  && Object.keys(e).every((k) => k === 'skill' || k === 'module' || k === 'reserve')
-  && optional((v) => isInt(v, 0, LOADOUT_LIMITS.skillIndex))(e.skill) && optional(isId)(e.module)
-  && optional(isReserveTier)(e.reserve);
+const isLoadoutEntry = (e) => isPlain(e) && Object.keys(e).length > 0 && Object.keys(e).every((k) => k === 'skill' || k === 'module')
+  && optional((v) => isInt(v, 0, LOADOUT_LIMITS.skillIndex))(e.skill) && optional(isId)(e.module);
 /** Structural check of `room.loadout.entries`. */
 export const isLoadoutEntries = (v) => isMap(v, LOADOUT_LIMITS.entries, isId, isLoadoutEntry);
 
@@ -143,16 +178,7 @@ export function checkLoadout(entries, getChess) {
   for (const id of Object.keys(entries)) {
     const e = entries[id];
     const base = typeof getChess === 'function' ? getChess(id) : null;
-    if (!base || base.isGolden || base.isDiy || (base.baseId && base.baseId !== id)) {
-      return { error: 'BAD_TARGET', detail: `unknown chess ${id}` };
-    }
-    // An 外援 pick may be a chess the ordinary roster hides (`isReserve` candidates are not in the normal pool);
-    // an ordinary pick must still be a visible slot.
-    const reserve = e.reserve === undefined ? undefined : (isReserveTier(e.reserve) ? e.reserve : null);
-    if (reserve === null) return { error: 'BAD_MSG', detail: `bad reserve tier for ${id}` };
-    if (reserve !== undefined) {
-      if (base.isReserve !== true) return { error: 'BAD_TARGET', detail: `${id} is not a reserve operator` };
-    } else if (base.visible === false || base.isHidden) {
+    if (!base || base.isGolden || base.visible === false || base.isHidden || base.isDiy || (base.baseId && base.baseId !== id)) {
       return { error: 'BAD_TARGET', detail: `unknown chess ${id}` };
     }
     const golden = base.goldenId ? getChess(base.goldenId) || null : null;
@@ -162,15 +188,8 @@ export function checkLoadout(entries, getChess) {
     if (e.module !== undefined && !golden) return { error: 'BAD_TARGET', detail: `${id} has no elite module` };
     const module = golden ? (e.module ?? opt.defaultModule) : null;
     if (golden && !opt.modules.includes(module)) return { error: 'BAD_TARGET', detail: `module ${e.module} not available for ${id}` };
-    // an entry that only equals the defaults is dropped — unless it carries an 外援 slot, which is a choice of its own
-    if (skill === opt.defaultSkill && module === opt.defaultModule && reserve === undefined) continue;
-    out[id] = reserve === undefined ? { skill, module } : { skill, module, reserve };
-  }
-  for (const t of RESERVE_TIERS) {
-    const n = Object.values(out).filter((e) => e.reserve === t).length;
-    if (n > LOADOUT_LIMITS.reserveSlots) {
-      return { error: 'BAD_TARGET', detail: `too many tier-${t} reserve operators (${n} > ${LOADOUT_LIMITS.reserveSlots})` };
-    }
+    if (skill === opt.defaultSkill && module === opt.defaultModule) continue;
+    out[id] = { skill, module };
   }
   return { ok: true, loadout: out };
 }
@@ -195,6 +214,101 @@ export function resolveLoadout(loadout, chess, getChess) {
   let moduleId = null;
   if (golden) moduleId = e && opt.modules.includes(e.module) ? e.module : opt.defaultModule;
   return { skillIndex, moduleId };
+}
+
+// ---- 干员皮肤 (docs/SKINS.md): room.skins { skins } -----------------------------------------------------------
+
+/**
+ * `room.skins { skins }`: `skins` = `{ [baseChessId]: skinId }`.
+ * Unlike `room.loadout` these are PUBLIC: they ride in `Match.publicView().players[]` so a teammate sees your
+ * skin, which is the whole point of choosing one in a co-op match.
+ */
+export const SKIN_LIMITS = Object.freeze({ entries: 160, idLen: 64 });
+/** A skinId. NOT `isId`: those allow only `[A-Za-z0-9_\-.:]`, and skin ids carry `@` and `#` (`char_002_amiya@winter#1`). */
+export const isSkinId = (v) => typeof v === 'string' && v.length > 0 && v.length <= SKIN_LIMITS.idLen && /^[A-Za-z0-9_@#+.\-]+$/.test(v);
+/** Structural check of `room.skins.skins`. */
+export const isSkinSelection = (v) => isMap(v, SKIN_LIMITS.entries, isId, isSkinId);
+
+// ---- operator ownership (干员持有, 0.2.0 补位): room.ownership { notOwned } -------------------------------------------
+
+/**
+ * `room.ownership { notOwned }`: the base chess ids the player marked as not owned on the 干员持有 screen (the
+ * per-browser setting next to 干员调配; default: every operator owned ⇒ []). Such a chess keeps its identity (name,
+ * bonds, 特质, tier, price, merge) and fights as its official stand-in (shared/standIn.js standInRecord). Structural
+ * limit below; the semantic check (`checkNotOwned`) is LENIENT, unlike checkLoadout: an id that is not a droppable chess
+ * (unknown, elite, PRESET / 自选, a stale id of another build) is dropped, never the whole list.
+ */
+export const OWNERSHIP_LIMITS = Object.freeze({ notOwned: 160 });
+/** Structural check of `room.ownership.notOwned`: an array of ≤ 160 ids. */
+export const isNotOwnedList = (v) => isList(v, OWNERSHIP_LIMITS.notOwned, isId);
+
+/**
+ * Semantic check + normalisation of a not-owned list against the game data: keeps the ids of droppable chess
+ * (shared/standIn.js isDroppableChess — NORMAL base chess with a stand-in), deduplicated and sorted; drops the rest.
+ * Used by the server (lobby, match) and by the client before it sends or imports a list.
+ * @param {any} list `room.ownership.notOwned`
+ * @param {(id: string) => any} getChess chess record lookup
+ * @returns {{ ok: true, notOwned: string[], dropped: number } | { error: 'BAD_MSG', detail: string }}
+ */
+export function checkNotOwned(list, getChess) {
+  if (!isNotOwnedList(list)) return { error: 'BAD_MSG', detail: 'bad notOwned list' };
+  const keep = new Set();
+  for (const id of list) {
+    const c = typeof getChess === 'function' ? getChess(id) : null;
+    if (c && c.chessId === id && isDroppableChess(c)) keep.add(id);
+  }
+  const notOwned = [...keep].sort();
+  return { ok: true, notOwned, dropped: list.length - notOwned.length };
+}
+
+// ---- 自选编队 (0.2.0 DIY): room.diy { picks } ------------------------------------------------------------------------
+
+/**
+ * `room.diy { picks }`: the player's 自选编队 — `{ [slotBaseId]: { charId, skillIndex?, uniEquipId? } | null }` for the
+ * four DIY slots (data/backups.json `diy.slots`: two at tier 5, two at tier 6; shared/diy.js). An out-of-match setting
+ * like 干员持有: stored per session / seat, a match takes the picks its seat had at its start. Structural limit below
+ * (room for more slots in a later season); the semantic check (`checkDiyPicks`) is LENIENT, like checkNotOwned: an
+ * illegal pick — not a pick of the slot's tier, an operator without a kit, a prototype off its locked skill, an unknown
+ * skill / module, the same operator twice in a tier, an owned operator in a second slot, an unknown slot — is dropped,
+ * never the whole roster; only malformed input is BAD_MSG.
+ */
+export const DIY_LIMITS = Object.freeze({ slots: 8 });
+const isDiyPickWire = (p) => p === null || (isPlain(p) && isId(p.charId)
+  && nullable((v) => isInt(v, 0, 9))(p.skillIndex) && nullable(isId)(p.uniEquipId));
+/** Structural check of `room.diy.picks`: a map of ≤ 8 slot ids → a pick `{ charId, skillIndex?, uniEquipId? }` or null. */
+export const isDiyPicks = (v) => isMap(v, DIY_LIMITS.slots, isId, isDiyPickWire);
+
+/**
+ * Semantic check + normalisation of a 自选 roster against the game data (`{ chess, backups }` or a sim DataSource) and
+ * the kit registry (`kitted`: server/sim/content/kits/index.js KITTED_CHARS — an operator without a kit is never fielded):
+ * the slots are taken in data order (tier 5, then tier 6), and each pick is kept when the roster so far plus it still
+ * passes shared/diy.js validateDiyPicks — so the result always passes it, and of two picks that clash (one owned operator
+ * in two slots, one operator twice in a tier) the first slot keeps it. Kept picks are complete
+ * (`{ charId, skillIndex, uniEquipId }`: a prototype's locked selection, uniEquipId null = no module).
+ * @param {any} picks `room.diy.picks`
+ * @param {{ data: any, kitted?: Iterable<string>|((id: string) => boolean)|null }} opts
+ * @returns {{ ok: true, picks: Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>, dropped: number }
+ *   | { error: 'BAD_MSG', detail: string }}
+ */
+export function checkDiyPicks(picks, { data, kitted = null } = { data: null }) {
+  if (!isDiyPicks(picks)) return { error: 'BAD_MSG', detail: 'bad 自选 picks' };
+  const slots = diySlotIds(data);
+  /** @type {Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>} */
+  const kept = {};
+  /** 🔴 每个被丢掉的槽 ＋ **为什么**（2026-10-07 第 54 轮 A 加）：`dropped` 只是个数字，
+   *  调用方（`setDiy`）无法点名/说理 ⇒ 一条被丢的 pick 在服务器上是**静默**的
+   *  （玩家反馈的形状：「我选了技能、进战斗却是默认技能」；上游 0.2.1 同款）。 */
+  const droppedDetail = {};
+  let dropped = 0;
+  for (const id of Object.keys(picks)) if (picks[id] != null && !slots.includes(id)) { dropped++; droppedDetail[id] = '不是自选槽（unknown slot）'; }
+  for (const slotId of slots) {
+    const pick = Object.hasOwn(picks, slotId) ? picks[slotId] : null;
+    if (pick == null) continue;
+    const res = validateDiyPicks({ ...kept, [slotId]: pick }, { data, kitted });
+    if ('ok' in res) kept[slotId] = res.picks[slotId];
+    else { dropped++; droppedDetail[slotId] = res.detail || res.error || '被拒'; }
+  }
+  return { ok: true, picks: kept, dropped, droppedDetail };
 }
 
 // ---- unit stats (user playtest #4 item 7): m.unitStats units and the browser battle's live stats ---------------------
@@ -247,6 +361,16 @@ export function unitStatsEntry(u, s = null) {
     ...(range ? { range } : {}),
     // the enemy card greys a SILENCE-format line (折射) from this; absent flags ⇒ not silenced
     silenced: !!(cur.flags && cur.flags.silence),
+    // 望的「补子」= 她自己重新部署上场的棋子（不是玩家战前摆的那一批）。**引擎只留标记，画什么由显示层定**
+    // （`public/js/render/app.js` WANG_PIECE_STYLE / setWangMarks）。它不是单位等级/属性，只回答"这枚是不是补的"。
+    // 🔴 2026-10-08 B12 更正：这里原来读 `u.mem.wangRefilled` —— 那是**退休的内置版望**的写法
+    // （冷备 `tokens.js:1997` 的 `spawnToken(..., { mem: { wangRefilled: true } })`，它**另起一枚新单位**）；
+    // 在跑版（`kits/ops/op-wang.js`，`kits/index.js:138` 只注册它）**不另起单位**：原位补子是
+    // `b.redeploy(stone, { free: false })`（`op-wang.js:203-219`）把**同一个单位**重新部署
+    // ⇒ 没有任何 mem 标记，读旧字段**永远 false**（不抛不警告 = 另一种静默失效）。
+    // 实测（`.workbuddy/tools/_b12-wang-refilled-probe.mjs`，真引擎）：战前那批 `deployedAt === 0`，
+    // 自己回来的 `= 2.03`、望回场带回来的 `= 5.03`；`mem.wangNode` 由部署钩子写（`op-wang.js:229-234`）。
+    refilled: !!(u?.mem && u.mem.wangNode && u.deployedAt > 0),
   };
 }
 
@@ -266,7 +390,10 @@ export const C2S = {
   // session & lobby
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6), $optional: ['token', 'version'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v) },
+  // 🆕 2026-10-08 `chatMode` 可选（建房时就决定要不要开打字；不提 = 默认 open）。
+  //   这是给「建房时选开关」用的 —— 否则客户端只能「先建房、再 room.quick」，那会有一个短暂的中间态。
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v),
+    chatMode: isChatMode, $optional: ['chatMode'] },
   'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
   'room.ready': { ready: isBool },
@@ -279,11 +406,36 @@ export const C2S = {
   'room.start': {},
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK
   'room.loadout': { entries: isLoadoutEntries },
+  // operator ownership (干员持有, 0.2.0 补位): stored per session / seat; a match takes the list its seat had when it
+  // started (an out-of-match setting — during a match it is stored for the next one: ROOM_STARTED)
+  'room.ownership': { notOwned: isNotOwnedList },
+  // 自选编队 (0.2.0 DIY): the player's DIY slot picks; stored per session / seat like room.ownership (a match takes the
+  // picks its seat had when it started; during a match they are stored for the next one: ROOM_STARTED)
+  'room.diy': { picks: isDiyPicks },
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —
   // in its lobby or while its match runs — never a player seat; the host frees one by playerId (the spectator gets
   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.
   'room.spectate': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.removeSpectator': { playerId: isId },
+  // 野排快速匹配（3a；参照 simpfun 的同名消息，「同难度自动组队 · 满 MAX_SEATS 人开局」）：服务端 = 同难度进/建一间
+  // 公开等待房（server/lobby.js matchmake），并在到期时用 AI 补满开局。**加消息是兼容变更**（不动 PROTOCOL_VERSION）。
+  'room.matchmake': { difficulty: (v) => DIFFICULTIES.includes(v) },
+  // 干员皮肤 (docs/SKINS.md): public, accepted in any room phase
+  'room.skins': { skins: isSkinSelection },
+  // 房间内打字聊天 (D-3; CHAT_LIMITS above): `text` is only checked to BE a string here — cleaning, the 120-code-point
+  // truncation, the empty refusal and the permission gate are the server's (server/lobby.js chat, server/net.js
+  // sanitizeChat). Available in every phase, a running match included; only a PURE spectator seat is refused.
+  // ⚠️ Adding a message is a compatible change ⇒ PROTOCOL_VERSION stays where it is (口径 §1: an old client silently
+  // ignores an unknown S2C type — public/js/net.js:588-589).
+  'room.chat': { text: (v) => isStr(v, CHAT_LIMITS.inbound) },
+  // 🆕 2026-10-08 快捷聊天（用户拍板）：`room.quick` 是**房主的打字开关**（只在对局开始前可改，
+  //   server/lobby.js quick）；`room.quickMsg` 发一条**白名单短语**（`id` 逗号分隔，最多 3 个，
+  //   只认 config.quickPhrases ⇒ 客户端伪造不出新短语）。开着时打字被服务端拒（ERR.CHAT_OFF）。
+  //   广播是 S2C 的 'quick.msg'（与 'chat.msg' 同范围）；短语**不做单独历史**。
+  'room.quick': { on: (v) => typeof v === 'boolean' },
+  'room.quickMsg': { id: isQuickId, arg: isQuickArg, $optional: ['arg'] },
+  // 🆕 2026-10-09 W-6 头像：**只传 id**（空串 = 清掉，回默认字形）。这里只挡形状；真表校验在服务端。
+  'room.avatar': { id: isAvatarId },
 
   // match
   'g.infoReady': {},
@@ -308,7 +460,9 @@ export const C2S = {
   'g.choice': { idx: (v) => isInt(v, 0, 5) },
   'g.ready': { ready: isBool },
   'g.emote': { id: (v) => EMOTES.includes(v) },
-  'g.watch': { fieldId: (v) => isStr(v, 32) },
+  // playerId: the player tapped in the team panel (a 联防 / boss pair field shows two) — what an eliminated viewer or a
+  // spectator seat follows from then on (Match.watchPref; community report of 2026-10-06, item 56)
+  'g.watch': { fieldId: (v) => isStr(v, 32), playerId: isId, $optional: ['playerId'] },
   'g.autoplay': { on: isBool },
   // solo pause (official PauseUp / ResumeUp, DESIGN §14): freezes the running battle (field clock, deadlines, the
   // browser's local runner) — solo matches only (co-op ⇒ WRONG_PHASE), only while a battle runs; m.public.paused
@@ -344,6 +498,13 @@ export const S2C = [
   'b.start', 'b.pool', 'b.end',
   // server-run combat streaming (legacy / SP_COMBAT=server only)
   'b.snap', 'b.ev',
+  // 房间内打字聊天 (D-3): chat.msg { from, name, text, at } — broadcast to the whole room, spectator seats included
+  // (from = playerId for colouring/dedup, name = the current nickname, at = ms epoch); chat.history
+  // { messages: [{ from, name, text, at }] } — the room's newest CHAT_LIMITS.history lines, unicast to ONE session on
+  // a resume/repeated hello (server/lobby.js onHello). An old client ignores both (public/js/net.js:588-589).
+  'chat.msg', 'chat.history',
+  // 🆕 2026-10-08 快捷聊天：broadcast { from, name, ids: string[], at }（ids 已过白名单与条数上限）
+  'quick.msg',
 ];
 
 /**
@@ -367,12 +528,12 @@ export function validateC2S(msg) {
 
 // Event tuple kinds inside `b.ev` (DESIGN §8.2).
 export const EV = Object.freeze({
-  SPAWN: 'spawn', ATK: 'atk', DMG: 'dmg', HEAL: 'heal', SKILL: 'skill', DIE: 'die', LEAK: 'leak',
+  SPAWN: 'spawn', ATK: 'atk', DMG: 'dmg', HEAL: 'heal', SKILL: 'skill', ENGAGE: 'engage', DIE: 'die', LEAK: 'leak',
   STATUS: 'status', FX: 'fx', LAYER: 'layer', BOUNTY: 'bounty', DEPLOY: 'deploy',
 });
 
 /**
- * The model form a `b.ev` 'fx' tuple ['fx', kind, x, y, extra] puts its unit in: `extra.form` (sim content/enemies.js
+ * The model form a `b.ev` 'fx' tuple ['fx', kind, x, y, extra] puts its unit in: `extra.form` (sim content/enemies/helpers.js
  * setForm — 转译基底·α's forms, a 逐火 余烬 and its revival, a leader's 重生, 守墓石像's modes, 掠海漂移体's crawl; a 傀儡师's 替身,
  * sim professions.js; a string is that clip set, null the base one), undefined for any other tuple. A form is state, not decoration: a view that misses
  * the fx keeps drawing the old model (player report #5 after 0.1.0), so the client's catch-up frames, its hidden-tab

@@ -21,7 +21,7 @@
 //     included — are always delivered, and a full queue sheds only cosmetic ones.
 //
 // Snapshot tuple layout (DESIGN §8.2): [id, x, y, hp, maxHp, sp, spMax, flags, anim]. Two optional lists ride along
-// (server/sim/Battle.js snapshot, user playtest #4 items 8 / 9):
+// (server/sim/battle/events.js snapshot, user playtest #4 items 8 / 9):
 //   * `elem` [[id, element, fill, cooldownEnd, cooldown]] — the element gauge a unit shows: appended to that unit's
 //     normalised tuple (EL…EL_DUR) and handed out by sample() as `el`, `elFill`, `elUntil`, `elDur` (from the older
 //     snapshot, like flags);
@@ -311,9 +311,15 @@ export class SnapshotBuffer {
         o.vx = vx; o.vy = vy;
         o.hp = a[3]; o.maxHp = a[4]; o.sp = a[5]; o.spMax = a[6];
       }
-      // the sim rounds hp up and maxHp to nearest, so a snapshot may say hp = maxHp + 1
-      if (o.hp > o.maxHp && o.maxHp > 0) o.hp = o.maxHp;
-      else if (!(o.hp > 0)) o.hp = 0;
+      // `hp` 只夹**上界**（模拟层把 hp 向上取整、maxHp 四舍五入，所以快照可能出现 hp = maxHp + 1）。
+      //
+      // ⚠️ 下界**绝不能夹到 0**：斩业星熊「我执」的负生命值是由 `snapshot.js` 以**负 hp 下发**的，
+      //    而 `UnitView.sync`/`_updateHud` 正是靠 `hp < 0` 画那条暗红负血条。
+      //    旧代码 `else if (!(o.hp > 0)) o.hp = 0;` 会把负数**静默抹成 0** →
+      //    负血条永远不显示，而服务端一切正常（这是排查了很久的"机制没生效"真因之一）。
+      //    非有限值（NaN/undefined）仍然归 0，避免把 NaN 传进 Pixi 的宽度计算里。
+      if (!Number.isFinite(o.hp)) o.hp = 0;
+      else if (o.hp > o.maxHp && o.maxHp > 0) o.hp = o.maxHp;
       o.flags = a[7];
       o.anim = a[8];
       if (a.length > 9) { o.el = a[9]; o.elFill = a[10]; o.elUntil = a[11]; o.elDur = a[12]; } else if (o.el !== null) { o.el = null; o.elFill = 0; o.elUntil = 0; o.elDur = 0; }

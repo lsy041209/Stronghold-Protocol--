@@ -1,0 +1,662 @@
+{
+  "_README": "阿斯卡纶（char_4132_ascln）—— SPECIAL/stalker，外援干员。数据取自 simpfun 参照（`.workbuddy/simpfun-ref/`），不凭印象。",
+  "_pendingWhy": "内容包工具只加载 *.json。本文件故意带 .pending：**数据已就位，但该干员的 kit 还没实现**。AGENTS §十.2 要求\"每引入一位新干员就按官方口径做完整（技能/天赋/召唤物/范围/数值/素材引用）\"⇒ 只有数据没有 kit 的是半成品 ⇒ 做完 kit + 探针后用 `--enable` 去掉 .pending 再启用。",
+  "_来源": "simpfun 参照 `.workbuddy/simpfun-ref/data_chess.json`（只读固化）；字段投影规则见 `.workbuddy/tools/a7-gen-reserve-packs.mjs`。",
+  "_待做": [
+    "kit：server/sim/content/kits/reserve-ascln.js（并在 kits/reserve.js 里接线）",
+    "每条技能一条\"先红后绿\"探针（AGENTS §三）",
+    "素材引用：avatar / portrait / spine / skillIcon 四条在磁盘上真的存在（b-verify-asset-refs.mjs）",
+    "skillIcon 的名字可能落在未落盘的 `<skill>` 上 ⇒ 跑素材引用判据"
+  ],
+  "pack": "ascln",
+  "version": 1,
+  "targetBase": "0.1.6",
+  "note": "阿斯卡纶（外援）—— stalker（kit 待实现）",
+  "chess": [
+    {
+      "tier": 6,
+      "isHidden": false,
+      "visible": false,
+      "charId": "char_4132_ascln",
+      "name": "阿斯卡纶",
+      "appellation": "Ascalon",
+      "rarity": 6,
+      "profession": "SPECIAL",
+      "subProfessionId": "stalker",
+      "subProfessionName": null,
+      "position": "MELEE",
+      "nationId": "rhodes",
+      "bonds": [
+        "emptyShip"
+      ],
+      "garrisonIds": [],
+      "price": 4,
+      "sellPrice": 1,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_ascln_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 1233,
+        "atk": 763,
+        "def": 283,
+        "res": 30,
+        "cost": 21,
+        "blockCnt": 0,
+        "bat": 3.5,
+        "aspd": 100,
+        "respawnTime": 70,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": -1,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "rangeId": "y-1",
+      "rangeGrid": [
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "dmgType": "phys",
+      "attackKind": "melee",
+      "projectile": "none",
+      "canHitFly": false,
+      "targetPriority": null,
+      "trait": {
+        "desc": "对攻击范围内所有敌人造成伤害\n拥有50%的物理和法术闪避且不容易成为敌人的攻击目标",
+        "descRaw": "对攻击范围内<@ba.kw>所有敌人</>造成伤害\n拥有50%的物理和法术闪避且不容易成为敌人的<@ba.kw>攻击目标</>",
+        "bb": {
+          "prob": 0.5
+        },
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "skill": {
+        "skillId": "skchr_ascln_3",
+        "iconId": "skchr_ascln_3",
+        "name": "降临",
+        "level": 4,
+        "desc": "攻击范围扩大，攻击力+20%，攻击间隔缩短，使攻击范围内的地面敌人物理与法术命中率-15%。自身更易受到敌人攻击，敌人未命中自身或自身闪避时回复4%最大生命值",
+        "descRaw": "攻击范围<@ba.vup>扩大</>，攻击力<@ba.vup>+20%</>，攻击间隔<@ba.vup>缩短</>，使攻击范围内的地面敌人物理与法术命中率<@ba.vup>-15%</>。自身更易受到敌人攻击，敌人未命中自身或自身闪避时回复<@ba.vup>4%</>最大生命值",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 45,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 53,
+        "initSp": 25,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "base_attack_time": -1.2,
+          "atk": 0.2,
+          "taunt_level": 2,
+          "attack@hp_ratio": 0.04,
+          "attack@damage_hitrate_physical": -0.15,
+          "attack@damage_hitrate_magical": -0.15
+        },
+        "bbStr": {},
+        "rangeId": "y-10",
+        "rangeGrid": [
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            0,
+            -1
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            -2,
+            -1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -2,
+            1
+          ]
+        ],
+        "prefabId": "skchr_ascln_3",
+        "trigger": {
+          "rule": "DEFAULT",
+          "rawRule": "DEFAULT"
+        },
+        "index": 2,
+        "overrideTokenKey": null,
+        "adaptationNote": "范围、命中率降低与闪避治疗已实现；状态按网页版目标范围判定。"
+      },
+      "talents": [
+        {
+          "index": 0,
+          "name": "死亡拘审",
+          "desc": "攻击对敌人施加效果：移动速度降低18％，每秒受到10％阿斯卡纶当前攻击力的法术伤害，持续25秒，效果最多叠加三层",
+          "descRaw": "攻击对敌人施加效果：移动速度降低18％，每秒受到10％阿斯卡纶当前攻击力的法术伤害，持续25秒，效果最多叠加三层",
+          "bb": {
+            "move_speed": -0.18,
+            "atk_ratio": 0.1,
+            "max_stack_cnt": 3,
+            "debuff_duration": 25,
+            "interval": 1
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        },
+        {
+          "index": 1,
+          "name": "噬光残影",
+          "desc": "攻击速度+8，自身周围四格有高台时，攻击速度额外+6",
+          "descRaw": "攻击速度+8，自身周围四格有高台时，攻击速度额外+6",
+          "bb": {
+            "attack_speed": 8,
+            "attack_speed_add": 6,
+            "cnt": 1
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        }
+      ],
+      "tokens": [],
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_4132_ascln",
+        "portrait": "char_4132_ascln_1",
+        "spine": "char_4132_ascln",
+        "skillIcon": "skchr_ascln_3",
+        "subProfIcon": "sub_stalker_icon"
+      },
+      "skills": [
+        {
+          "skillId": "skchr_ascln_1",
+          "iconId": "skchr_ascln_1",
+          "name": "追袭",
+          "level": 4,
+          "desc": "下次攻击的攻击力提升至130%，并连续攻击两次\n可充能2次",
+          "descRaw": "下次攻击的攻击力提升至<@ba.vup>130%</>，并连续攻击两次\n<@ba.rem>可充能2次</>",
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 10,
+          "initSp": 2,
+          "maxChargeTime": 2,
+          "increment": 1,
+          "bb": {
+            "atk_scale": 1.3,
+            "cnt": 2
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_ascln_1",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 0,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "自动触发双击并叠加侵蚀层数。"
+        },
+        {
+          "skillId": "skchr_ascln_2",
+          "iconId": "skchr_ascln_2",
+          "name": "恩赐",
+          "level": 4,
+          "desc": "攻击力+50%，使攻击范围内地面敌人移动速度-30%，并在其被击倒时对周围敌人施加一层第一天赋效果",
+          "descRaw": "攻击力<@ba.vup>+50%</>，使攻击范围内地面敌人移动速度<@ba.vup>-30%</>，并在其被击倒时对周围敌人施加一层第一天赋效果",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 35,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 27,
+          "initSp": 5,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk": 0.5,
+            "move_speed": -0.3,
+            "range_radius": 1.3
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_ascln_2",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 1,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "范围内地面敌人减速，死亡时向附近目标传播一层侵蚀。"
+        },
+        {
+          "skillId": "skchr_ascln_3",
+          "iconId": "skchr_ascln_3",
+          "name": "降临",
+          "level": 4,
+          "desc": "攻击范围扩大，攻击力+20%，攻击间隔缩短，使攻击范围内的地面敌人物理与法术命中率-15%。自身更易受到敌人攻击，敌人未命中自身或自身闪避时回复4%最大生命值",
+          "descRaw": "攻击范围<@ba.vup>扩大</>，攻击力<@ba.vup>+20%</>，攻击间隔<@ba.vup>缩短</>，使攻击范围内的地面敌人物理与法术命中率<@ba.vup>-15%</>。自身更易受到敌人攻击，敌人未命中自身或自身闪避时回复<@ba.vup>4%</>最大生命值",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 45,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 53,
+          "initSp": 25,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "base_attack_time": -1.2,
+            "atk": 0.2,
+            "taunt_level": 2,
+            "attack@hp_ratio": 0.04,
+            "attack@damage_hitrate_physical": -0.15,
+            "attack@damage_hitrate_magical": -0.15
+          },
+          "bbStr": {},
+          "rangeId": "y-10",
+          "rangeGrid": [
+            [
+              2,
+              -1
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -2,
+              -1
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ]
+          ],
+          "prefabId": "skchr_ascln_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": null,
+          "isDefault": true,
+          "adaptationNote": "范围、命中率降低与闪避治疗已实现；状态按网页版目标范围判定。"
+        }
+      ],
+      "isReserve": true,
+      "chessId": "chess_ascln_a"
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_4132_ascln": {
+      "avatar": "/assets/char/avatar/char_4132_ascln.webp",
+      "avatarE2": "/assets/char/avatar/char_4132_ascln_2.webp",
+      "portrait": "/assets/char/portrait/char_4132_ascln_1.webp",
+      "portraitE2": "/assets/char/portrait/char_4132_ascln_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_4132_ascln/front/char_4132_ascln.skel",
+          "atlas": "/assets/spine/op/char_4132_ascln/front/char_4132_ascln.atlas",
+          "textures": [
+            "/assets/spine/op/char_4132_ascln/front/char_4132_ascln.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Skill_2",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_A": 1.5,
+            "Attack_B": 1.5,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 4,
+            "Skill_1": 1.5,
+            "Skill_2": 1.667,
+            "Skill_3_Begin": 0.5,
+            "Skill_3_End": 0.5,
+            "Skill_3_Idle": 4,
+            "Skill_3_Loop": 1.833,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_A": [
+              0.7
+            ],
+            "Attack_B": [
+              0.7
+            ],
+            "Skill_1": [
+              0.7,
+              0.967
+            ],
+            "Skill_2": [
+              0.933
+            ],
+            "Skill_3_Loop": [
+              0.933
+            ]
+          },
+          "bounds": {
+            "x": -431.955,
+            "y": -2.106,
+            "width": 766.072,
+            "height": 505.509
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_4132_ascln/back/char_4132_ascln.skel",
+          "atlas": "/assets/spine/op/char_4132_ascln/back/char_4132_ascln.atlas",
+          "textures": [
+            "/assets/spine/op/char_4132_ascln/back/char_4132_ascln.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack_A",
+              "end": null,
+              "via": "attackAny"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": null,
+                "loop": "Skill_2",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_A": 1.5,
+            "Attack_B": 1.5,
+            "Default": 0,
+            "Idle": 4,
+            "Skill_1": 1.5,
+            "Skill_2": 1.667,
+            "Skill_3_Begin": 0.5,
+            "Skill_3_End": 0.5,
+            "Skill_3_Idle": 4,
+            "Skill_3_Loop": 1.833,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_A": [
+              0.7
+            ],
+            "Attack_B": [
+              0.7
+            ],
+            "Skill_1": [
+              0.7,
+              0.967
+            ],
+            "Skill_2": [
+              0.933
+            ],
+            "Skill_3_Loop": [
+              0.933
+            ]
+          },
+          "bounds": {
+            "x": -431.955,
+            "y": -2.106,
+            "width": 766.072,
+            "height": 505.509
+          }
+        }
+      }
+    }
+  }
+}

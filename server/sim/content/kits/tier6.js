@@ -114,6 +114,10 @@ import { rotateOffset } from '../../dir.js';
 import { bodyDist, bodyInKeys, bodyKeys } from '../../body.js';
 import { hasHp } from '../../damage.js';
 import { summonToken, TOKEN_IDS } from '../tokens.js';
+// 外援干员的 kit 单独一个文件（10-05 加）：赤刃明霄陈 / 斩业星熊。
+// content/index.js 是按 baseChessId 合并 TIERS 的，所以在这里展开即可被找到，
+// 与干员当前是几阶无关（测试期他们是 tier 3）。
+import reserveKits from './reserve.js';
 
 // ------------------------------------------------------------------------------------------------------------------
 // helpers
@@ -1470,7 +1474,7 @@ function reed2(bb, chess, def) {
         }
       },
       onTick({ battle, unit, dt }) {
-        const cd = Math.max(0.1, num(bb.cooldown, 1.5)), ratio = num(unit.profile?.healRatio, num(tb.scale, 0.5));
+        const cd = Math.max(0.1, num(bb.cooldown, 1.5));
         for (const F of unit.mem.reedFire || []) {
           if (!live(F.a)) continue;
           F.acc += dt;
@@ -1480,9 +1484,10 @@ function reed2(bb, chess, def) {
           if (!c.length) c = enemiesIn(battle, unit);
           if (!c.length) continue;
           sortEnemyTargets(battle, F.a, c, null);
-          const dealt = battle.dealDamage(unit, c[0], { amount: unit.s.atk * num(bb.atk_scale, 1), type: 'arts', isSkill: true, tags: ['skill', 'fireball'] });
+          // "每1.5秒对一名敌人造成…法术伤害并仅对该干员触发焰影苇草特性": the trait heal (professions.js
+          // installIncantation) runs for this damage and names the carrier instead of the lowest-HP ally in range
+          battle.dealDamage(unit, c[0], { amount: unit.s.atk * num(bb.atk_scale, 1), type: 'arts', isSkill: true, tags: ['skill', 'fireball'], traitAlly: F.a });
           battle.fx('strike', { x: c[0].x, y: c[0].y, id: c[0].id, src: F.a.id });
-          if (dealt > 0 && ratio > 0) battle.heal(unit, F.a, dealt * ratio, { tags: ['incantation'] });
         }
       },
       onEnd({ battle, unit }) {
@@ -1925,7 +1930,7 @@ function mlyss(bb, chess, def) {
       { install(battle, unit) { // 净水即生命: 流形 copy / respawn / melee steal / ranged split
         unit.mem.mlyssPending = [];
         const S = bstate(battle);
-        S.robbed ??= new WeakMap(); // enemy → { atk, def } stolen by any 流形
+        if (S.robbed == null) S.robbed = new WeakMap(); // enemy → { atk, def } stolen by any 流形
         const mine = (t) => isTok(t, tokId, unit);
         // her 流形 on the field (split clones aside: deployLimit 1 counts the 流形 itself)
         const standing = () => battle.allyUnits.some((t) => mine(t) && live(t) && !t.mem.mlyssClone);
@@ -2036,7 +2041,7 @@ function mlyss(bb, chess, def) {
       } },
       { install(battle, unit) { // 开源节流: 莱茵生命 ops of the owner cost less DP to redeploy
         const S = bstate(battle);
-        S.rhine ??= new Set();
+        if (S.rhine == null) S.rhine = new Set();
         if (S.rhine.has(unit.ownerId)) return;
         S.rhine.add(unit.ownerId);
         const cut = num(t1.cost), first = num(t1.runtime_cost);
@@ -2678,23 +2683,24 @@ function nearl2(bb, chess, def) {
     // (whole hits negated); then she withdraws and this redeploy time is ×respawn_time (×1 when the operator deployed
     // right before her is 【卡西米尔】)
     skchr_nearl2_2: {
-      kind: 'passive',
+      kind: 'duration', activateOnDeploy: true, duration: num(def?.skill?.duration, 22), spCost: 0, spType: 'none', trigger: 'NEVER',
+      mods: { atkPct: num(bb.atk) },
       onStart({ battle, unit, skill }) {
         const dur = num(skill.duration, num(def?.skill?.duration, 22));
         if (!(dur > 0)) return;
         const prev = lastOps.map?.get(unit.ownerId);
-        const combo = !!prev && prev !== unit && hasBond(prev, 'kazimierzShip');
-        battle.addBuff(unit, { key: 'nearl2:night', mods: { atkPct: num(bb.atk) }, duration: dur, visible: true });
+        unit.mem.nearl2Combo = !!prev && prev !== unit && hasBond(prev, 'kazimierzShip');
         const hits = Math.floor(num(bb.times));
         if (hits > 0) battle.addBuff(unit, { key: 'nearl2:shield', shieldHits: hits, duration: dur, visible: true });
-        const seq = unit.deploySeq;
-        battle.after(dur, () => {
-          if (!live(unit) || unit.deploySeq !== seq) return;
-          battle.retreat(unit, { reason: 'retreat' });
-          const mul = combo ? num(bb['nearl2_s_2[withdraw][combo].respawn_time'], 1) : num(bb.respawn_time, 1);
-          if (Number.isFinite(unit.respawnAt) && mul !== 1) unit.respawnAt = battle.time + (unit.respawnAt - battle.time) * mul;
-          battle.fx('disappear', { x: unit.x, y: unit.y, id: unit.id, combo });
-        }, { owner: unit });
+      },
+      onEnd({ battle, unit, reason }) {
+        battle.removeBuff(unit, 'nearl2:shield');
+        if (reason !== 'duration' || !live(unit)) return;
+        const combo = unit.mem.nearl2Combo;
+        battle.retreat(unit, { reason: 'retreat' });
+        const mul = combo ? num(bb['nearl2_s_2[withdraw][combo].respawn_time'], 1) : num(bb.respawn_time, 1);
+        if (Number.isFinite(unit.respawnAt) && mul !== 1) unit.respawnAt = battle.time + (unit.respawnAt - battle.time) * mul;
+        battle.fx('disappear', { x: unit.x, y: unit.y, id: unit.id, combo });
       },
     },
   };
@@ -3047,7 +3053,7 @@ function whitw2(bb, chess, def) {
       } },
       { install(battle, unit) { // 叙拉古的荣幸: one team effect per player, the strongest copy's numbers
         const S = bstate(battle);
-        S.siracusa ??= new Map();
+        if (S.siracusa == null) S.siracusa = new Map();
         const cur = S.siracusa.get(unit.ownerId);
         const sp = num(t1.sp), as = num(t1.attack_speed);
         if (cur) { cur.sp = Math.max(cur.sp, sp); cur.as = Math.max(cur.as, as); return; }
@@ -3237,7 +3243,7 @@ function agoat2(bb, chess, def) {
           if (a.hp < a.s.maxHp) battle.heal(unit, a, unit.s.atk, { skillHeal: true });
         }
         const S = bstate(battle);
-        S.agoatVeils ??= [];
+        if (S.agoatVeils == null) S.agoatVeils = [];
         S.agoatVeils.push({ keys: new Set(unit.rangeKeys || []), pool: unit.s.atk * bv(bb, 'atk_scale', 5), until: battle.time + num(bb.duration, 12), src: unit });
         battle.fx('shield', { x: unit.x, y: unit.y, id: unit.id, duration: num(bb.duration, 12) });
         if (!S.agoatVeilHook) {
@@ -3337,6 +3343,7 @@ function agoat2(bb, chess, def) {
 // ------------------------------------------------------------------------------------------------------------------
 
 export default {
+  ...reserveKits,
   chess_char_1_15_a: pithst,
   chess_char_6_01_a: lemuen,
   chess_char_6_02_a: sbell2,

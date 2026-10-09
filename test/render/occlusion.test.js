@@ -145,14 +145,14 @@ describe('attack wind-up', () => {
 
 describe('interp: hp clamp and look-ahead', () => {
   const snap = (t, units) => ({ fieldId: 'n:1', t, units });
-  test('snapshot hp = maxHp + 1 (sim rounding) is clamped; negative hp → 0', () => {
+  test('snapshot hp = maxHp + 1 (sim rounding) is clamped; negative hp stays negative (斩业星熊「我执」的红色负血条)', () => {
     const b = new SnapshotBuffer();
     b.push(snap(0, [[1, 0, 10, 101, 100, 0, 10, 0, 0], [2, 1, 10, -3, 100, 0, 10, 0, 0]]), 0);
     b.push(snap(0.1, [[1, 0, 10, 101, 100, 0, 10, 0, 0], [2, 1, 10, -3, 100, 0, 10, 0, 0]]), 0.05);
     for (const t of [0, 0.05, 0.1, 0.2]) {
       const out = b.sample(t);
       assert.equal(out.get(1).hp, 100);
-      assert.equal(out.get(2).hp, 0);
+      assert.equal(out.get(2).hp, -3, '负生命值透传给渲染层（红条要用）；只有 maxHp 的上界会被夹');
     }
   });
 

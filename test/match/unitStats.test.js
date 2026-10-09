@@ -1,7 +1,7 @@
 // Live operator stats (user playtest #4 item 7 — the detail card showed the fixed record numbers): g.unitStats answers
 // m.unitStats { seq, round, units } with the stats every unit of the player's board starts its next battle with — the
 // real battle input (equipment, bonds / layers, 特质, band and 机变 effects, the onBattleStart meta) built into a Battle
-// that is started and read, never stepped (server/match/Match.js unitStats); the shape is shared/protocol.js
+// that is started and read, never stepped (server/match/match/intents.js unitStats); the shape is shared/protocol.js
 // unitStatsEntry (also the browser runner's live battle stats, test/match/runner.test.js). The preview changes nothing
 // of the match.
 import { test } from 'node:test';
@@ -52,6 +52,10 @@ test('unitStatsEntry: effective stats next to the base, rounded for display; the
     maxHp: 1250, atk: 420, def: 90, res: 12.3, interval: 1.08, blockCnt: 3, moveSpeed: 0,
     base: { maxHp: 1000, atk: 300, def: 100, res: 10, interval: 1.2, blockCnt: 2, moveSpeed: 0 },
     silenced: false,
+    // 望「补子」标记（**我们自己加的字段**：上游 `shared/protocol.js` 的 unitStatsEntry 没有它）
+    // 🔴 2026-10-08 B12：这条期望**一直是漏的**（断言测的是"整份形状"，而字段早就加上了 ⇒ 本用例自加了
+    //    那个字段起就是红的，只是没人跑它）。语义（什么算补子）由 `test/render/wang-pieces.test.js` 钉住。
+    refilled: false,
   });
   const plain = unitStatsEntry(u);
   assert.equal(plain.atk, 300, 'no aggregated stats: the base');

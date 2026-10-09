@@ -17,13 +17,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const manifest = {
   version: 1,
   groups: {
-    'emoticon/basic': { pic_happy_battle: { path: '/assets/local/emoticon/basic/pic_happy_battle.png', w: 120, h: 120 } },
+    'emoticon/basic': { pic_happy_battle: { path: '/assets/local/emoticon/basic/pic_happy_battle.webp', w: 120, h: 120 } },
     guide: Object.fromEntries(['autochess_home_1', 'autochess_home_2', 'autochess_shop_1', 'autochess_handbook_4']
-      .map((k) => [k, { path: `/assets/local/guide/${k}.png`, w: 1024, h: 1024 }])),
-    'ui/battle': { img_chess_level_3: { path: '/assets/local/ui/battle/img_chess_level_3.png', w: 45, h: 45 } },
+      .map((k) => [k, { path: `/assets/local/guide/${k}.webp`, w: 1024, h: 1024 }])),
+    'ui/battle': { img_chess_level_3: { path: '/assets/local/ui/battle/img_chess_level_3.webp', w: 45, h: 45 } },
   },
 };
-// what server/index.js serves when data/local-assets.json is absent
+// what the server (server/http/static.js) serves when data/local-assets.json is absent
 const EMPTY_LOCAL = { version: 1, source: 'none', count: 0, groups: {} };
 
 let mode = 'ok';         // data/local-assets.json: 'ok' (the manifest above) | 'empty' (the server's stand-in) | 'missing' (404)
@@ -59,7 +59,7 @@ describe('local-client art fallbacks', () => {
     assert.deepEqual(pages.map((p) => p.key), ['autochess_home_1', 'autochess_home_2', 'autochess_shop_1', 'autochess_handbook_4'], 'reading order, missing pages skipped');
     assert.deepEqual(pages.map((p) => p.chapter), [0, 0, 1, 2]);
     assert.equal(GUIDE_CHAPTERS.reduce((n, c) => n + c.pages.length, 0), 19, 'the 19 official tutorial pages');
-    assert.equal(tierChipUrl(3), '/assets/local/ui/battle/img_chess_level_3.png');
+    assert.equal(tierChipUrl(3), '/assets/local/ui/battle/img_chess_level_3.webp');
     assert.equal(tierChipUrl(4), null, 'CSS fallback');
     assert.equal(localAsset('guide', 'autochess_home_9'), null);
     assert.equal(localAsset('nope', 'x'), null);
@@ -94,29 +94,29 @@ describe('emotes and 玩法说明 pages: local art first, then the mirror copy (
   test('lookup order: the local file, then data/assets.json ui[\'<group>/<name>\'], then nothing', async () => {
     mode = 'ok';
     assetsDoc = { ui: {
-      'emoticon/basic/pic_happy_battle': '/assets/ui/emoticon/basic/pic_happy_battle.png',  // both: the local one wins
-      'emoticon/basic_2/pic_sad_battle': '/assets/ui/emoticon/basic_2/pic_sad_battle.png',  // the mirror copy only
-      'guide/autochess_home_1': '/assets/ui/guide/autochess_home_1.png',
-      'guide/autochess_home_9': '/assets/ui/guide/autochess_home_9.png',
+      'emoticon/basic/pic_happy_battle': '/assets/ui/emoticon/basic/pic_happy_battle.webp',  // both: the local one wins
+      'emoticon/basic_2/pic_sad_battle': '/assets/ui/emoticon/basic_2/pic_sad_battle.webp',  // the mirror copy only
+      'guide/autochess_home_1': '/assets/ui/guide/autochess_home_1.webp',
+      'guide/autochess_home_9': '/assets/ui/guide/autochess_home_9.webp',
       'ui/battle/img_chess_level_4': '/assets/ui/x.png',                                     // not one of the mirrored groups' names
     } };
     const { data, artUrls, nextArtUrl, localAsset } = await import('../../public/js/data.js');
     await reload(data);
     const { emoteArtUrl, emoteArtUrls } = await import('../../public/js/ui/emotes.js');
     const { guidePages } = await import('../../public/js/ui/guide.js');
-    assert.deepEqual(emoteArtUrls('autochess_battle_happy'), ['/assets/local/emoticon/basic/pic_happy_battle.png', '/assets/ui/emoticon/basic/pic_happy_battle.png']);
-    assert.equal(emoteArtUrl('autochess_battle_happy'), '/assets/local/emoticon/basic/pic_happy_battle.png', 'local first');
-    assert.equal(emoteArtUrl('autochess_battle_sad'), '/assets/ui/emoticon/basic_2/pic_sad_battle.png', 'no local file: the mirror copy');
+    assert.deepEqual(emoteArtUrls('autochess_battle_happy'), ['/assets/local/emoticon/basic/pic_happy_battle.webp', '/assets/ui/emoticon/basic/pic_happy_battle.webp']);
+    assert.equal(emoteArtUrl('autochess_battle_happy'), '/assets/local/emoticon/basic/pic_happy_battle.webp', 'local first');
+    assert.equal(emoteArtUrl('autochess_battle_sad'), '/assets/ui/emoticon/basic_2/pic_sad_battle.webp', 'no local file: the mirror copy');
     assert.deepEqual(emoteArtUrls('autochess_battle_dying'), [], 'neither: the glyph');
     assert.equal(emoteArtUrl('autochess_battle_dying'), null);
     assert.deepEqual(emoteArtUrls('__proto__'), []);
     const pages = guidePages();
     assert.deepEqual(pages.map((p) => p.key), ['autochess_home_1', 'autochess_home_2', 'autochess_home_9', 'autochess_shop_1', 'autochess_handbook_4'], 'reading order, either source');
-    assert.deepEqual(pages[0].urls, ['/assets/local/guide/autochess_home_1.png', '/assets/ui/guide/autochess_home_1.png']);
-    assert.equal(pages[0].url, '/assets/local/guide/autochess_home_1.png');
-    assert.deepEqual(pages[2].urls, ['/assets/ui/guide/autochess_home_9.png']);
-    assert.deepEqual(artUrls('guide', 'autochess_home_2'), ['/assets/local/guide/autochess_home_2.png']);
-    assert.deepEqual(artUrls('ui/battle', 'img_chess_level_3'), ['/assets/local/ui/battle/img_chess_level_3.png']);
+    assert.deepEqual(pages[0].urls, ['/assets/local/guide/autochess_home_1.webp', '/assets/ui/guide/autochess_home_1.webp']);
+    assert.equal(pages[0].url, '/assets/local/guide/autochess_home_1.webp');
+    assert.deepEqual(pages[2].urls, ['/assets/ui/guide/autochess_home_9.webp']);
+    assert.deepEqual(artUrls('guide', 'autochess_home_2'), ['/assets/local/guide/autochess_home_2.webp']);
+    assert.deepEqual(artUrls('ui/battle', 'img_chess_level_3'), ['/assets/local/ui/battle/img_chess_level_3.webp']);
     assert.deepEqual(artUrls('guide', '__proto__'), []);
     assert.deepEqual(artUrls('constructor', 'x'), []);
     assert.equal(localAsset('guide', 'autochess_home_9'), null, 'localAsset stays local-only');
@@ -136,17 +136,17 @@ describe('emotes and 玩法说明 pages: local art first, then the mirror copy (
     await reload(data);
     const { emoteArtUrl } = await import('../../public/js/ui/emotes.js');
     const { guidePages } = await import('../../public/js/ui/guide.js');
-    for (const e of EMOTE_CATALOG) assert.equal(emoteArtUrl(e.id), `/assets/ui/emoticon/${e.dir}/${e.picId}.png`, e.id);
+    for (const e of EMOTE_CATALOG) assert.equal(emoteArtUrl(e.id), `/assets/ui/emoticon/${e.dir}/${e.picId}.webp`, e.id);
     const pages = guidePages();
     assert.deepEqual(pages.map((p) => p.key), GUIDE_PAGES);
-    assert.deepEqual(pages.map((p) => p.url), GUIDE_PAGES.map((k) => `/assets/ui/guide/${k}.png`));
+    assert.deepEqual(pages.map((p) => p.url), GUIDE_PAGES.map((k) => `/assets/ui/guide/${k}.webp`));
     assert.ok(pages.every((p) => p.urls.length === 1));
   });
 
   test('the guide stage: the local page, else the downloaded copy, else the official tips text (0.1.1\'s fallback)', async () => {
     const { guideStage } = await import('../../public/js/ui/guide.js');
-    const local = '/assets/local/guide/autochess_home_1.png';
-    const mirror = '/assets/ui/guide/autochess_home_1.png';
+    const local = '/assets/local/guide/autochess_home_1.webp';
+    const mirror = '/assets/ui/guide/autochess_home_1.webp';
     const page = { key: 'autochess_home_1', urls: [local, mirror] };
     assert.deepEqual(guideStage(page, new Set()), { kind: 'image', src: local }, 'local ok → local');
     assert.deepEqual(guideStage(page), { kind: 'image', src: local }, 'nothing failed yet');

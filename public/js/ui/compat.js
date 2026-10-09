@@ -48,6 +48,44 @@ export function installCompat(g = globalThis) {
     for (let i = (this.length >>> 0) - 1; i >= 0; i--) if (fn.call(thisArg, this[i], i, this)) return i;
     return -1;
   });
+  // Chromium < 85 / Safari < 13.1. The spec throws on a non-global RegExp, and a *function* replacement must not be
+  // stringified — hence the branch rather than a plain split/join.
+  def((g.String || String).prototype, 'replaceAll', function replaceAll(searchValue, replaceValue) {
+    if (searchValue instanceof RegExp) {
+      if (!searchValue.global) throw new TypeError('String.prototype.replaceAll called with a non-global RegExp argument');
+      return this.replace(searchValue, replaceValue);
+    }
+    const needle = String(searchValue);
+    if (!needle) return this.replace(new RegExp('(?:)', 'g'), replaceValue);
+    return this.split(needle).join(typeof replaceValue === 'function' ? '' : String(replaceValue));
+  });
+  // Chromium < 85 / Safari < 14. Resolves with the first fulfilment, rejects with an AggregateError once every input
+  // rejects (an Error carrying `.errors` where AggregateError itself is missing).
+  const P = g.Promise || Promise;
+  def(P, 'any', function any(iterable) {
+    return new P((resolve, reject) => {
+      const items = Array.from(iterable || []);
+      if (!items.length) {
+        const agg = typeof g.AggregateError === 'function' ? new g.AggregateError([], 'All promises were rejected') : new Error('All promises were rejected');
+        agg.errors = [];
+        reject(agg);
+        return;
+      }
+      const errors = new Array(items.length);
+      let rejectedCount = 0;
+      items.forEach((p, i) => {
+        P.resolve(p).then(resolve, (err) => {
+          errors[i] = err;
+          rejectedCount += 1;
+          if (rejectedCount === items.length) {
+            const agg = typeof g.AggregateError === 'function' ? new g.AggregateError(errors, 'All promises were rejected') : new Error('All promises were rejected');
+            agg.errors = errors;
+            reject(agg);
+          }
+        });
+      });
+    });
+  });
   def(g, 'structuredClone', function structuredClone(value) { return cloneValue(value, new Map()); });
   def(g, 'queueMicrotask', function queueMicrotask(fn) { Promise.resolve().then(fn).catch((err) => setTimeout(() => { throw err; })); });
   return added;

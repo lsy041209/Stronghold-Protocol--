@@ -2,6 +2,19 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
+  <!-- A page opened straight from disk (file://) cannot run this app: every /css, /js and /data URL is absolute (the
+       client is built to be served from a domain root), so the stylesheet, the module graph and the data all fail and
+       the unstyled boot screen reads like a network error. Detect that early and say how to start it the right way. -->
+  <script>if (location.protocol === 'file:') document.documentElement.className += ' sp-file-protocol';</script>
+  <style>
+    .sp-file-protocol .rotate-hint,
+    .sp-file-protocol .boot { display: none !important; }
+    .sp-file-protocol #app::before {
+      content: '请通过「卫戍协议.exe」启动（双击即可），或运行「命令行备用入口 → 启动游戏.bat」，然后用浏览器打开 http://127.0.0.1:3000/ 。\A\A 直接双击网页文件（地址栏是 file://）无法运行本游戏：它的样式、脚本与数据都按「域名根路径」加载，从磁盘打开时全部取不到。';
+      display: block; white-space: pre-wrap; max-width: 44em; margin: 14vh auto 0; padding: 0 24px;
+      font: 15px/2 system-ui, -apple-system, "Microsoft YaHei", sans-serif; color: #c3cbc7; background: #0c0f0e;
+    }
+  </style>
   <!-- A landscape game: no page zoom (iOS additionally needs the gesture handling of js/ui/device.js), full-bleed behind
        notches (viewport-fit=cover; css/devices.css keeps the HUD inside the safe area). -->
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -39,6 +52,7 @@
   <link rel="stylesheet" href="/css/screens/guide.css" />
   <link rel="stylesheet" href="/css/screens/loadout.css" />
   <link rel="stylesheet" href="/css/emotes.css" />
+  <link rel="stylesheet" href="/css/chat.css" />
   <link rel="stylesheet" href="/css/devices.css" />
 
   <script type="importmap">
@@ -81,9 +95,14 @@
       if (!e || e.getAttribute('data-final')) return;
       var im = false;
       try { im = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap')); } catch (x) { im = false; }
-      e.textContent = why === 'old' || !im
-        ? '当前浏览器版本过旧，无法运行本游戏。请升级到 iOS / iPadOS 16.4+（Safari 16.4+）、Chrome / Edge 90+ 或 Firefox 108+ 后刷新。'
-        : '游戏脚本加载失败，请检查网络连接后刷新页面。';
+      // A file:// page cannot load anything (every URL is absolute): report the real cause, not a network fault.
+      if (location.protocol === 'file:') {
+        e.textContent = '请通过「卫戍协议.exe」启动（或运行「命令行备用入口 → 启动游戏.bat」），再用浏览器打开 http://127.0.0.1:3000/ —— 直接双击网页文件无法运行本游戏。';
+      } else if (why === 'old' || !im) {
+        e.textContent = '当前浏览器版本过旧，无法运行本游戏。请升级到 iOS / iPadOS 16.4+（Safari 16.4+）、Chrome / Edge 90+ 或 Firefox 108+ 后刷新。';
+      } else {
+        e.textContent = '游戏脚本加载失败，请检查网络连接后刷新页面。';
+      }
       e.setAttribute('data-final', '1');
     };
     // a module graph that fails to link (bare specifier without import-map support) reports here, not on the <script>

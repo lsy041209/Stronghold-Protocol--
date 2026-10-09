@@ -5,8 +5,10 @@
 //   → dodge (phys/arts, canDodge) → mitigation (phys: DEF, arts: RES, true: none)
 //   → × source dmgDealtMul (× phys/artsDealtMul) × target dmgTakenMul (not for 元素伤害) × type-taken mul × dmg.mul
 //   → 限伤 (leaders in boss / hidden battles: a hit of ceil(final) ≥ BOSS_HIT_LIMIT is cancelled, see leaderHitCancelled)
-//   → shields (hit-negating barriers first, then HP shields) → HP loss (boss pool routing) → 'damaged' hook
-//   → SP-on-hurt / TAKE_DAMAGE trigger → fatal/kill.
+//   → shields (hit-negating barriers first, then HP shields; a typed one — buff `shieldType` — only its damage type)
+//   → 'hpDamage' hook (what passed the shields; handlers may only lower `amount`: the 伤判效果 that act after a
+//   barrier — 煌's 紧急除颤 HP floor, 左乐's 庇护 re-applied after his 行险 barrier) → HP loss (boss pool routing)
+//   → 'damaged' hook → SP-on-hurt / TAKE_DAMAGE trigger → fatal/kill.
 // Damage-dealt stats (the source's `stats.dmg`, the player's `damageDealt`) count only HP removed from the other side:
 // self and friendly damage (a 源石溶剂 drain, an operator's own 流失) is the target's `taken` and keeps the kill credit.
 // Phys: max(A − max(0, D×(1−defIgnorePct) − defIgnoreFlat), 5 %·A); Arts: max(A×(1 − R′/100), 5 %·A) with
@@ -92,6 +94,10 @@ export function makeDamageInfo(d = {}) {
     ignoreSelect: !!d.ignoreSelect,
     sourceless: !!d.sourceless,
     attackId: d.attackId ?? 0,
+    // 咒愈师 skills whose damage triggers their trait for ONE named ally ("并仅对该角色/干员触发…特性"): the instance
+    // carries that ally, and the trait hook (professions.js installIncantation) heals it instead of the lowest-HP ally
+    // in range. null = the ordinary target of the trait.
+    traitAlly: d.traitAlly ?? null,
   };
 }
 
@@ -166,8 +172,8 @@ export function mitigate(amount, type, target, ign = {}) {
  * number. A 'hitCap' fx event `{ id, n: ceil(amount) }` marks it for the client, which draws nothing — the official
  * shows no number [ASSUMED]. Every HP-damage kind is checked as the official `modifier.isDamage` (phys, arts, true,
  * 元素伤害 incl. element bursts, DoT ticks — they all come through dealDamage — and losses passed on to a leader through
- * Battle.loseHp); element 损伤 (gauge fill, 'element') removes no HP and is never checked. Deterministic (Math.ceil of
- * the same double on every engine).
+ * Battle.loseHp, except the 胄 drone link's pool share: `noHitLimit`, DESIGN §25.13.4); element 损伤 (gauge fill,
+ * 'element') removes no HP and is never checked. Deterministic (Math.ceil of the same double on every engine).
  */
 export function leaderHitCancelled(battle, target, amount) {
   if (!(BOSS_HIT_LIMIT > 0) || !target || !target.isBoss || (battle.kind !== 'boss' && battle.kind !== 'hidden')) return false;
@@ -176,14 +182,48 @@ export function leaderHitCancelled(battle, target, amount) {
   return true;
 }
 
-/** Absorb damage with shields on `target`. Returns the remaining amount. */
-export function absorbShields(battle, target, amount) {
+/**
+ * 限伤（**封顶**）— the official boss-hit limit, **as the user ruled on 2026-10-07** (shared/constants.js BOSS_HIT_LIMIT,
+ * docs/research/11-limits-official.md §2; the client's `AutoChessStepModeManager._OnBossEnemyTakeDamage`:
+ * `d = ceil(value); if (d >= 300000) modifier.Cancel()`).
+ *
+ * ⚠️ **我们与官方客户端【有意不一致】**：官方是**整击作废**（`modifier.Cancel()` ⇒ 0 伤害、无数字、无 credit，
+ * 见上面的 `leaderHitCancelled`）；用户 2026-10-07 裁定「**只去掉"伤害过高导致伤害清零"，做一个伤害上限就好了，
+ * 溢出的伤害再删掉**」⇒ 这里**返回夹到上限的值**（`BOSS_HIT_LIMIT`），**溢出部分直接丢弃**，
+ * 其余流程（护盾 → HP/池 → 伤害数字 → credit/stats）**照常**。
+ * ⇒ ⛔ **别在"对齐官方 / 同步上游"时把流水线改回 `leaderHitCancelled`（= 清零）**
+ *   （依据：`协作/C-口径总表` 第 3 条、`协作/C-执行单-限伤改封顶-2026-10-07.md`；
+ *    判据 `test/sim/limits-clamp.test.js` 同时钉住**行为**与"流水线不许再调用那个谓词"）。
+ *
+ * 适用面（与官方同）：目标是领袖（`isBoss`）、战场是 boss / hidden、且 `ceil(amount) ≥ BOSS_HIT_LIMIT`。
+ * `!(BOSS_HIT_LIMIT > 0)`（0 / Infinity）⇒ **完全不生效**（原样返回）。
+ * `leaderHitCancelled` 仍**原样导出**（0.2.1 的 `battle/combat.js` 与既有判据 import 它）—— 它现在是
+ * "官方那条规则怎么说"的**谓词**，**流水线不再调用它**。
+ *
+ * @returns {number} 实际应当使用的伤害 —— **未触线时原样返回 `amount`**，触线时返回 `BOSS_HIT_LIMIT`
+ */
+export function capLeaderHit(battle, target, amount) {
+  if (!(BOSS_HIT_LIMIT > 0) || !target || !target.isBoss || (battle.kind !== 'boss' && battle.kind !== 'hidden')) return amount;
+  if (!(Math.ceil(amount) >= BOSS_HIT_LIMIT)) return amount;
+  battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(amount) });
+  return BOSS_HIT_LIMIT;
+}
+
+/**
+ * Absorb damage with shields on `target`. Returns the remaining amount. `type` = the damage type: a shield buff with a
+ * `shieldType` absorbs only that type (夜莺 S2 "屏障能吸收…法术伤害") — or, a list of types, only those (机械师's 屏障:
+ * BlockDamage PHYSICAL_AND_MAGICAL, buff_template_data mcnist_t_2 / mcnist_s_2_shield: ['phys', 'arts']); one without
+ * absorbs every type (PRTS 术语释义 屏障 "若无特殊说明，屏障可吸收全种类伤害"). Older shields first (buff order:
+ * "优先消耗先生成的屏障").
+ */
+export function absorbShields(battle, target, amount, type = null) {
   if (amount <= 0) return 0;
   let changed = false;
   let rest = amount;
+  const absorbs = (b) => !b.shieldType || (Array.isArray(b.shieldType) ? b.shieldType.includes(type) : b.shieldType === type);
   for (let i = 0; i < target.buffs.length && rest > 0; i++) {
     const b = target.buffs[i];
-    if (b.shieldHits > 0) {
+    if (b.shieldHits > 0 && absorbs(b)) {
       b.shieldHits--;
       rest = 0;
       if (b.shieldHits <= 0 && !(b.shield > 0) && !b.mods && !b.flags) { battle._removeBuffAt(target, i); i--; }
@@ -193,7 +233,7 @@ export function absorbShields(battle, target, amount) {
   }
   for (let i = 0; i < target.buffs.length && rest > 0; i++) {
     const b = target.buffs[i];
-    if (b.shield > 0) {
+    if (b.shield > 0 && absorbs(b)) {
       const take = Math.min(b.shield, rest);
       b.shield -= take;
       rest -= take;
@@ -243,7 +283,7 @@ export function dealDamage(battle, source, target, dmgIn) {
   // recognise their own (tagged) damage — never re-create such a loss with a fresh loseHp.
   if (ts.flags.hitCount || ts.flags.hitCountArts) {
     const counts = !(ts.flags.hitCountArts && !ts.flags.hitCount && type === 'phys');
-    return applyHpLoss(battle, source, target, absorbShields(battle, target, counts ? 1 : 0), dmg);
+    return applyHpLoss(battle, source, target, absorbShields(battle, target, counts ? 1 : 0, type), dmg);
   }
   // 无来源 damage (element bursts) takes nothing from its source's stats; the source still gets the credit below
   const ss = source && source.s && !dmg.sourceless ? source.s : null;
@@ -262,8 +302,16 @@ export function dealDamage(battle, source, target, dmgIn) {
   if (!(final > 0) || !Number.isFinite(final)) final = 0;
   // 限伤: a leader's hit of ≥ BOSS_HIT_LIMIT in a boss / hidden battle is cancelled before it reaches shields / HP — what
   // ran before it (the attack, its SP, `hit` hook effects, separate element 损伤) stays; nothing after it happens
-  if (final > 0 && leaderHitCancelled(battle, target, final)) return 0;
-  final = absorbShields(battle, target, final);
+  // 限伤（用户 2026-10-07 裁定：**封顶**，不是官方的整击作废）——见 `capLeaderHit` 的注释。
+  // ⛔ 这里**不许**改回 `leaderHitCancelled`（那是清零：无 HP 损失、无数字、无 credit）。
+  if (final > 0) final = capLeaderHit(battle, target, final);
+  final = absorbShields(battle, target, final, type);
+  // 伤判效果 after the barriers (header): a handler may lower what reaches the HP — never raise it (a 流失 skips this)
+  if (final > 0 && battle._hooks.hpDamage) {
+    const hctx = { source: hs, target, amount: final, dmg, credit: source };
+    battle.emit('hpDamage', hctx);
+    if (Number.isFinite(hctx.amount)) final = Math.max(0, Math.min(final, hctx.amount));
+  }
   return applyHpLoss(battle, source, target, final, dmg);
 }
 
@@ -459,12 +507,16 @@ function resolveBurst(battle, source, target, el) {
         },
       });
     } else {
-      // 15 s of 阻回 ("停止并阻止任意形式的技力回复": noSp) + 静默 (no skill activation), −1 SP and 100 arts damage per second
+      // 15 s of 阻回 ("停止并阻止任意形式的技力回复": noSp) + 静默 (no skill activation), −1 SP and 100 arts damage per second.
+      // The loss is of the official 技力 (Skill.spTotal: the stored charges × cost + the SP towards the next) — PRTS 技能
+      // 可充能 "当持有者的技力流失时，充能次数也会实时降低": taking it from the partial bar alone left a full skill every
+      // charge it had (a one-charge skill stayed ready through the burst; PR #262). setSpTotal rebuilds the charges
+      // silently (no spGain) and leaves a running timed skill alone, whose SP was spent at its cast.
       lock(c.duration, {
         flags: { silence: true, noSp: true }, interval: 1,
         onTick: () => {
           const sk = target.skill;
-          if (sk && !sk.noSkill && sk.kind !== 'passive' && !(sk.active && sk.isTimed) && sk.sp > 0) sk.sp = Math.max(0, sk.sp - c.spLossPerSec);
+          if (sk && !sk.noSkill && sk.kind !== 'passive' && !(sk.active && sk.isTimed) && sk.spTotal > 0) sk.setSpTotal(Math.max(0, sk.spTotal - c.spLossPerSec));
           hit(c.dps, c.dpsType);
         },
       });
@@ -505,34 +557,71 @@ export function reduceElement(target, amount, el = null) {
  * PRTS 异常效果 HEAL_FREE "受到的治疗量变为0") stops the unit's own too — except an HP-regeneration attribute (`regen`:
  * "增减生命回复速度或生命回复速度（百分比）属性的效果不会被识别为治疗类能力") and a heal that ignores it (`ignoreHealFree`:
  * 史尔特尔 S3's start heal, PRTS "无视禁疗").
+ * A `regen` tick (Battle status: the unit's own 生命回复速度, `s.hpRegen` — 吟游者 / 调香师 / 瑕光 S2 / 铃兰 S3 / 锡人 add to it
+ * with an hpRegen buff, PRTS 备注 "不受治疗加成和禁疗影响") is no 治疗: no 治疗加成 scales it — neither the healing
+ * multipliers nor a `heal` handler (handlers still see it, with `opts.regen`; a change they make to its amount is
+ * ignored).
+ * A healer whose profile names the target in `healThrough(healer, target)` heals it through its 禁疗 — the `noHeal` flag
+ * a summon's 禁疗 sets and the flag `healFree` (not a profile's `noHeal`, 无法被友方治疗): 凯尔希 on her Mon3tr (PRTS
+ * Mon3tr(凯尔希的召唤物) "持有禁疗（可被凯尔希…无视）"; her heal selection takes it too, Battle.injuredAlliesInKeys).
  */
 export function heal(battle, source, target, amount, opts = {}) {
   if (!target || !target.alive || target.removed || !target.deployed || target.bossPool) return 0;
   const self = source === target || !!opts.self;
-  if (!self && (target.s.flags.noHeal || (target.profile && target.profile.noHeal))) return 0;
-  if (target.s.flags.healFree && !opts.regen && !opts.ignoreHealFree) return 0;
-  let amt = amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
+  const through = !!(source && source.profile && typeof source.profile.healThrough === 'function' && source.profile.healThrough(source, target));
+  if (!self && ((target.s.flags.noHeal && !through) || (target.profile && target.profile.noHeal))) return 0;
+  const regen = !!opts.regen;
+  if (target.s.flags.healFree && !regen && !opts.ignoreHealFree && !through) return 0;
+  let amt = regen ? amount : amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
   if (!(amt > 0) || !Number.isFinite(amt)) return 0;
   if (battle._hooks.heal) {
     const ctx = { source, target, amount: amt, opts };
     battle.emit('heal', ctx);
-    amt = Number.isFinite(ctx.amount) ? Math.max(0, ctx.amount) : 0;
+    if (!regen) amt = Number.isFinite(ctx.amount) ? Math.max(0, ctx.amount) : 0;
     // a handler may have killed / retreated the target: healing a dead unit would leave it "dead with hp > 0"
     if (!target.alive || !target.deployed) return 0;
   }
   const max = target.s.maxHp;
-  const actual = Math.max(0, Math.min(amt, max - target.hp));
+  // ── 🔴 负生命（我执）**优先被治疗** ──────────────────────────────────────────────────────
+  // ⚠️ 用户 2026-10-06 报的 bug：「星熊 S2 的盾牌能给自己的负血量回复上来」。
+  //    负血记在 `target.mem.negHp`（见 `kits/reserve-hsgma2.js` 头部；`snapshot.js` 把它转成**负 hp** 下发给客户端），
+  //    而下面的 `min(amt, max - hp)` 在**满血 + 有负血**时算出 **0** ⇒
+  //    **一旦进入负血，任何治疗都不再有效** ✗ —— 连星熊 S2 的盾回血也回不上来。
+  //    修法：先把治疗量花在**负血**上（往 0 抬），剩下的才补 `hp`。
+  //    ⇒ 对**没有负血**的单位零影响（`negHp` 不存在或为 0 时整段跳过）。
+  //    ⚠️ 放在 `heal` 钩子**之后**：这样「治疗量提升」类 buff 已经算进 `amt` 了。
+  // 🔁 **2026-10-07（第 53 轮 A）**：这一段在换基座到上游 0.2.1 时**被静默丢掉**
+  //    （树里 `negHp` 命中 **0**，0.1.4.1 冷备与 `.workbuddy/_a52-recovery/X-1/` 那份都是 **10**）
+  //    ⇒ 已按冷备**逐字接回**；判据 = `test/sim/x1-neghp-heal.test.js`（红 → 绿）。
+  let left = amt;
+  let negHealed = 0;
+  if (target.mem) {
+    const neg = Number.isFinite(+target.mem.negHp) ? +target.mem.negHp : 0;
+    if (neg > 0) {
+      negHealed = Math.min(left, neg);
+      target.mem.negHp = neg - negHealed;
+      left -= negHealed;
+      // 与 kit 的 `syncNegHp()` 同一口径：比例 = 占**上限**（maxHp × max_minus_hp_ratio）的比例
+      const ratioCap = max * (Number(target.s.maxMinusHpRatio) || 2);
+      target.mem.negHpRatio = ratioCap > 0 ? Math.min(1, target.mem.negHp / ratioCap) : 0;
+      if (target.mem.negHp <= 1e-9) { target.mem.negHp = 0; target.mem.negHpRatio = 0; }
+      if (negHealed >= 0.5 && !opts.silent) battle._ev(['heal', target.id, Math.round(negHealed)]);
+    }
+  }
+  const actual = Math.max(0, Math.min(left, max - target.hp));
   target.hp = Math.min(max, target.hp + actual);
-  if (opts.overheal && amt > actual) {
+  if (opts.overheal && left > actual) {
     // overheal becomes a shield (capped at max HP) so hp stays within [0, maxHp]
     const cur = target.findBuff('overheal');
-    const val = Math.min(max, (cur ? cur.shield : 0) + (amt - actual));
+    const val = Math.min(max, (cur ? cur.shield : 0) + (left - actual));
     battle.addBuff(target, { key: 'overheal', shield: val, duration: opts.overhealDuration ?? Infinity });
   }
   if (source) {
-    source.stats.heal += actual;
-    if (source.side === 'ally' && source.ownerId != null) { const pp = battle._pp(source.ownerId); if (pp) pp.healingDone += actual; }
+    source.stats.heal += actual + negHealed;
+    if (source.side === 'ally' && source.ownerId != null) { const pp = battle._pp(source.ownerId); if (pp) pp.healingDone += actual + negHealed; }
   }
   if (actual >= 0.5 && !opts.silent) battle._ev(['heal', target.id, Math.round(actual)]);
-  return actual;
+  // ⚠️ 返回值必须**含负血那部分**：调用方（如星熊 S2 的盾、医疗干员的治疗结算）用它判断"这次治疗有没有生效"。
+  //    只返回 `actual` 的话，「满血 + 有负血」这种情形会返回 **0** ⇒ 看起来"治疗没生效"（前任第一版就漏了这里）。
+  return actual + negHealed;
 }

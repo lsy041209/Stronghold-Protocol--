@@ -1,0 +1,720 @@
+{
+  "_README": "丰川祥子（char_4182_oblvns）—— WARRIOR/lord，外援干员。数据取自 simpfun 参照（`.workbuddy/simpfun-ref/`），不凭印象。",
+  "_pendingWhy": "内容包工具只加载 *.json。本文件故意带 .pending：**数据已就位，但该干员的 kit 还没实现**。AGENTS §十.2 要求\"每引入一位新干员就按官方口径做完整（技能/天赋/召唤物/范围/数值/素材引用）\"⇒ 只有数据没有 kit 的是半成品 ⇒ 做完 kit + 探针后用 `--enable` 去掉 .pending 再启用。",
+  "_来源": "simpfun 参照 `.workbuddy/simpfun-ref/data_chess.json`（只读固化）；字段投影规则见 `.workbuddy/tools/a7-gen-reserve-packs.mjs`。",
+  "_待做": [
+    "kit：server/sim/content/kits/reserve-oblvns.js（并在 kits/reserve.js 里接线）",
+    "每条技能一条\"先红后绿\"探针（AGENTS §三）",
+    "素材引用：avatar / portrait / spine / skillIcon 四条在磁盘上真的存在（b-verify-asset-refs.mjs）",
+    "skillIcon 的名字可能落在未落盘的 `<skill>` 上 ⇒ 跑素材引用判据"
+  ],
+  "pack": "oblvns",
+  "version": 1,
+  "targetBase": "0.1.6",
+  "note": "丰川祥子（外援）—— lord（kit 待实现）",
+  "chess": [
+    {
+      "tier": 6,
+      "isHidden": false,
+      "visible": false,
+      "charId": "char_4182_oblvns",
+      "name": "丰川祥子",
+      "appellation": "Togawa Sakiko",
+      "rarity": 6,
+      "profession": "WARRIOR",
+      "subProfessionId": "lord",
+      "subProfessionName": null,
+      "position": "MELEE",
+      "nationId": null,
+      "bonds": [
+        "emptyShip"
+      ],
+      "garrisonIds": [],
+      "price": 4,
+      "sellPrice": 1,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_oblvns_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 1624,
+        "atk": 587,
+        "def": 352,
+        "res": 10,
+        "cost": 20,
+        "blockCnt": 2,
+        "bat": 1.3,
+        "aspd": 100,
+        "respawnTime": 70,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "rangeId": "3-12",
+      "rangeGrid": [
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "dmgType": "phys",
+      "attackKind": "ranged",
+      "projectile": "arrow",
+      "canHitFly": true,
+      "targetPriority": null,
+      "trait": {
+        "desc": "可以进行远程攻击，但此时攻击力降低至80%",
+        "descRaw": "可以进行<@ba.kw>远程攻击</>，但此时攻击力降低至80%",
+        "bb": {
+          "atk_scale": 0.8
+        },
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "skill": {
+        "skillId": "skchr_oblvns_3",
+        "iconId": "skchr_oblvns_3",
+        "name": "残月的余响",
+        "level": 4,
+        "desc": "攻击范围扩大，攻击同时使用钢琴和风琴音色演奏，各自演奏2个造成相当于攻击力155%物理和法术伤害的音符，且分别追踪法术抗性和防御力最高的敌人。\nFever期间Ave Mujica成员受到致命伤害时不撤退，Fever结束后退场",
+        "descRaw": "攻击范围扩大，攻击同时使用<@ba.vup>钢琴</>和<@ba.vup>风琴</>音色演奏，各自演奏<@ba.vup>2</>个造成相当于攻击力<@ba.vup>155%</>物理和法术伤害的音符，且分别追踪法术抗性和防御力最高的敌人。\n<@ba.rem><$ba.fever>Fever</>期间<$ba.mujica>Ave Mujica</>成员受到致命伤害时不撤退，<$ba.fever>Fever</>结束后退场</>",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 25,
+        "spType": "INCREASE_WHEN_ATTACK",
+        "spCost": 47,
+        "initSp": 28,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "attack@attack_speed": 0,
+          "attack@atk_scale": 1.55
+        },
+        "bbStr": {},
+        "rangeId": "3-21",
+        "rangeGrid": [
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            -1,
+            3
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -2,
+            1
+          ]
+        ],
+        "prefabId": "skchr_oblvns_3",
+        "trigger": {
+          "rule": "DEFAULT",
+          "rawRule": "DEFAULT"
+        },
+        "index": 2,
+        "overrideTokenKey": null,
+        "adaptationNote": "自动向高法抗与高防御目标演奏四个音符；Fever保护成员，并在结束后撤离被保护的成员。"
+      },
+      "talents": [
+        {
+          "index": 0,
+          "name": "颂乐音符",
+          "desc": "丰川祥子可以持续攻击且攻击会演奏追踪敌人的音符，音符飘出攻击范围一段时间后消失。每存在一个音符，Ave Mujica成员无视敌人3%的防御力和2%法术抗性（最多叠加至10层）",
+          "descRaw": "丰川祥子可以<$ba.permanentatk>持续攻击</>且攻击会演奏追踪敌人的音符，音符飘出攻击范围一段时间后消失。每存在一个音符，<$ba.mujica>Ave Mujica</>成员无视敌人3%的防御力和2%法术抗性（最多叠加至10层）",
+          "bb": {
+            "delay": 1,
+            "def_penetrate_ratio": 0.03,
+            "magic_resist_penetrate_ratio": 0.02,
+            "attack@angle": 20,
+            "max_cnt": 10
+          },
+          "bbStr": {},
+          "rangeGrid": [
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ]
+          ],
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        },
+        {
+          "index": 1,
+          "name": "毋畏遗忘",
+          "desc": "对敌人造成伤害时使Fever+3；其他Ave Mujica成员的攻击范围若与自身原本攻击范围重合，则将其视作攻击范围的延伸；攻击范围内干员攻击速度+12",
+          "descRaw": "对敌人造成伤害时使<$ba.fever>Fever</>+3；其他<$ba.mujica>Ave Mujica</>成员的攻击范围若与自身原本攻击范围重合，则将其视作攻击范围的延伸；攻击范围内干员攻击速度+12",
+          "bb": {
+            "enable": 1,
+            "attack_speed": 12,
+            "cnt": 3
+          },
+          "bbStr": {},
+          "rangeGrid": [
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ]
+          ],
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        }
+      ],
+      "tokens": [],
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_4182_oblvns",
+        "portrait": "char_4182_oblvns_1",
+        "spine": "char_4182_oblvns",
+        "skillIcon": "skchr_oblvns_3",
+        "subProfIcon": "sub_lord_icon"
+      },
+      "skills": [
+        {
+          "skillId": "skchr_oblvns_1",
+          "iconId": "skchr_oblvns_1",
+          "name": "新月的苏醒",
+          "level": 4,
+          "desc": "演奏出8个音符。每个音符造成的法术伤害依次从攻击力的65%逐渐降低至4%。\n可充能2次，充能至最大层数时自动释放一次",
+          "descRaw": "演奏出<@ba.vup>8</>个音符。每个音符造成的法术伤害依次从攻击力的<@ba.vup>65%</>逐渐降低至<@ba.vup>4%</>。\n<@ba.rem>可充能2次，充能至最大层数时自动释放一次</>",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WHEN_ATTACK",
+          "spCost": 4,
+          "initSp": 0,
+          "maxChargeTime": 2,
+          "increment": 1,
+          "bb": {
+            "atk_scale": 0.65,
+            "atk_scale_2": 0.6,
+            "atk_scale_3": 0.49,
+            "atk_scale_4": 0.38,
+            "atk_scale_5": 0.27,
+            "atk_scale_6": 0.22,
+            "atk_scale_7": 0.11,
+            "atk_scale_8": 0.04,
+            "angle": 15
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_oblvns_1",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 0,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "自动演奏八个追踪音符；充能按自动战斗策略使用，不要求玩家手动操作。"
+        },
+        {
+          "skillId": "skchr_oblvns_2",
+          "iconId": "skchr_oblvns_2",
+          "name": "满月的舞会",
+          "level": 4,
+          "desc": "可以切换钢琴（初始）或风琴音色演奏：\n钢琴：攻击力+60%，音符飞行速度加快，命中目标后穿过敌人造成物理伤害\n风琴：攻击速度+80，音符造成法术伤害且飞行速度减缓 \nFever期间变为当前音色的二连击",
+          "descRaw": "<@ba.rem>可以切换<@ba.vup>钢琴（初始）</>或<@ba.vup>风琴</>音色演奏：</>\n<@ba.vup>钢琴</>：攻击力<@ba.vup>+60%</>，音符飞行速度加快，命中目标后穿过敌人造成<@ba.vup>物理伤害</>\n<@ba.vup>风琴</>：攻击速度<@ba.vup>+80</>，音符造成<@ba.vup>法术伤害</>且飞行速度减缓 \n<@ba.rem><$ba.fever>Fever</>期间变为当前音色的二连击</>",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WHEN_ATTACK",
+          "spCost": 5,
+          "initSp": 0,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "attack@attack_speed": 80,
+            "attack@atk": 0.6,
+            "attack@passby_delay": 0.5
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_oblvns_2",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 1,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "钢琴与风琴按自动策略切换；钢琴穿透后续敌人的机制暂未实现，当前音符命中单一目标。"
+        },
+        {
+          "skillId": "skchr_oblvns_3",
+          "iconId": "skchr_oblvns_3",
+          "name": "残月的余响",
+          "level": 4,
+          "desc": "攻击范围扩大，攻击同时使用钢琴和风琴音色演奏，各自演奏2个造成相当于攻击力155%物理和法术伤害的音符，且分别追踪法术抗性和防御力最高的敌人。\nFever期间Ave Mujica成员受到致命伤害时不撤退，Fever结束后退场",
+          "descRaw": "攻击范围扩大，攻击同时使用<@ba.vup>钢琴</>和<@ba.vup>风琴</>音色演奏，各自演奏<@ba.vup>2</>个造成相当于攻击力<@ba.vup>155%</>物理和法术伤害的音符，且分别追踪法术抗性和防御力最高的敌人。\n<@ba.rem><$ba.fever>Fever</>期间<$ba.mujica>Ave Mujica</>成员受到致命伤害时不撤退，<$ba.fever>Fever</>结束后退场</>",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 25,
+          "spType": "INCREASE_WHEN_ATTACK",
+          "spCost": 47,
+          "initSp": 28,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "attack@attack_speed": 0,
+            "attack@atk_scale": 1.55
+          },
+          "bbStr": {},
+          "rangeId": "3-21",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -1,
+              3
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ]
+          ],
+          "prefabId": "skchr_oblvns_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": null,
+          "isDefault": true,
+          "adaptationNote": "自动向高法抗与高防御目标演奏四个音符；Fever保护成员，并在结束后撤离被保护的成员。"
+        }
+      ],
+      "isReserve": true,
+      "chessId": "chess_oblvns_a"
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_4182_oblvns": {
+      "avatar": "/assets/char/avatar/char_4182_oblvns.webp",
+      "avatarE2": "/assets/char/avatar/char_4182_oblvns_2.webp",
+      "portrait": "/assets/char/portrait/char_4182_oblvns_1.webp",
+      "portraitE2": "/assets/char/portrait/char_4182_oblvns_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_4182_oblvns/front/char_4182_oblvns.skel",
+          "atlas": "/assets/spine/op/char_4182_oblvns/front/char_4182_oblvns.atlas",
+          "textures": [
+            "/assets/spine/op/char_4182_oblvns/front/char_4182_oblvns.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Start",
+                "loop": "Skill_2_Idle_A",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.3,
+            "Combat": 1.3,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 4,
+            "Skill_1": 1.3,
+            "Skill_2_Idle_A": 4,
+            "Skill_2_Idle_B": 4,
+            "Skill_2_Loop_A": 1.3,
+            "Skill_2_Loop_B": 1.3,
+            "Skill_2_Start": 1,
+            "Skill_2_Trans_A": 0.333,
+            "Skill_2_Trans_B": 0.333,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 3.667,
+            "Skill_3_Loop": 1.167,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.267
+            ],
+            "Combat": [
+              0.267
+            ],
+            "Skill_1": [
+              0.267
+            ],
+            "Skill_2_Loop_A": [
+              0.267
+            ],
+            "Skill_2_Loop_B": [
+              0.267
+            ],
+            "Skill_3_Loop": [
+              0.2,
+              0.3
+            ]
+          },
+          "bounds": {
+            "x": -1363.64,
+            "y": -1.919,
+            "width": 2765.07,
+            "height": 692.659
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_4182_oblvns/back/char_4182_oblvns.skel",
+          "atlas": "/assets/spine/op/char_4182_oblvns/back/char_4182_oblvns.atlas",
+          "textures": [
+            "/assets/spine/op/char_4182_oblvns/back/char_4182_oblvns.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Start",
+                "loop": "Skill_2_Idle_A",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.3,
+            "Combat": 1.3,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 4,
+            "Skill_1": 1.3,
+            "Skill_2_Idle_A": 4,
+            "Skill_2_Idle_B": 4,
+            "Skill_2_Loop_A": 1.3,
+            "Skill_2_Loop_B": 1.3,
+            "Skill_2_Start": 1,
+            "Skill_2_Trans_A": 0.333,
+            "Skill_2_Trans_B": 0.333,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 3.667,
+            "Skill_3_Loop": 1.167,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.267
+            ],
+            "Combat": [
+              0.267
+            ],
+            "Skill_1": [
+              0.267
+            ],
+            "Skill_2_Loop_A": [
+              0.267
+            ],
+            "Skill_2_Loop_B": [
+              0.267
+            ],
+            "Skill_3_Loop": [
+              0.2,
+              0.3
+            ]
+          },
+          "bounds": {
+            "x": -1363.64,
+            "y": -1.919,
+            "width": 2765.07,
+            "height": 692.659
+          }
+        }
+      }
+    }
+  }
+}

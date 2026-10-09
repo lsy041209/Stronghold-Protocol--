@@ -1,6 +1,7 @@
 // 限伤 on screen (docs/research/11-limits-official.md §2, DESIGN §20.12): a leader's hit of ≥ 300000 in a boss battle
-// is cancelled by the sim (server/sim/damage.js leaderHitCancelled), which emits ['fx', 'hitCap', x, y, { id, n }] and
-// no 'dmg' event. The official shows no number for it [ASSUMED]; the renderer draws nothing for the event.
+// is **capped to 300000** by the sim (server/sim/damage.js capLeaderHit — 用户 2026-10-07: 封顶而不是归零), which still
+// emits ['fx', 'hitCap', x, y, { id, n }] (n = the pre-cap hit). The capped damage's own number comes from the normal
+// flow; the renderer draws nothing for this marking event.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

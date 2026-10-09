@@ -314,7 +314,10 @@ const KITS = {
           onStart({ unit }) {
             unit.mem.verdict = new Set();
             // 特性的回复生命效果提高至2倍 (the reaper profile reads profile.selfHeal on every attack)
-            if (unit.profile) { unit.mem.verdictHeal0 ??= num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); }
+            if (unit.profile) {
+              if (unit.mem.verdictHeal0 == null) unit.mem.verdictHeal0 = num(unit.profile.selfHeal, 50);
+              unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1);
+            }
           },
           onEnd({ battle, unit }) {
             const hit = unit.mem.verdict;
@@ -403,7 +406,8 @@ const KITS = {
   // enemies, sleeping enemies take 30 % ATK arts/s. T2 勇气的报偿: Sargon/Minos ops above 50 % HP get +20 ASPD.
   // S1 缓蚀 (duration): ATK +, attack@prob chance per attack to sleep the target attack@sleep s.
   // S2 封护 (duration): no attacks, ATK +; she and the lowest-HP-ratio operator in her range sleep until the skill ends
-  // (沉睡 = invulnerable), enemies around either of them keep falling asleep; T1 ×talent_scale.
+  // (沉睡 = invulnerable), enemies around either of them keep falling asleep — each 0.25 s pulse a new 沉睡 entry for
+  // her trait (GitHub #162, DESIGN §24.8); T1 ×talent_scale.
   chess_char_5_02_a: (bb, chess, def) => {
     const t0 = talent(chess, 0), t1 = talent(chess, 1);
     const sid = selectedId(chess, def);
@@ -444,9 +448,22 @@ const KITS = {
             unit.mem.titiWardAcc += dt;
             if (unit.mem.titiWardAcc < AURA_IV - 1e-9) return;
             unit.mem.titiWardAcc = 0;
+            // "期间持续使自身与该目标周围的敌人陷入沉睡": every AURA_IV (0.25 s) the enemies around a ward sleep AURA_DUR (0.5 s),
+            // and each pulse is a new 沉睡 entry (`reenter`), so her trait garrison_125 「每当范围内有敌人或干员进入沉睡或晕眩时」
+            // climbs on it to its per-battle cap (GitHub #162, the reporter's memory of the official mode: 「攻击范围内有陷入
+            // 沉睡就开始迅速增加直至上限」; the owner's decision of 2026-10-06, DESIGN §24.8). [ASSUMED] the pulse timing (not in
+            // the data). Once per enemy and pulse (one beside both wards re-enters once); not while a longer sleep from
+            // elsewhere holds it. The 0.5 s sleep outlasts the 0.25 s, so the enemy never wakes between pulses — only the
+            // `entered` flag of the pulse changed (until 0.1.3 the first pulse alone was an entry).
+            const pulsed = new Set();
             for (const a of unit.mem.titiWard || []) {
               if (!a.alive || !a.deployed || !a.findBuff('titi:ward')) continue;
-              for (const e of battle.foesInRadius(a.x, a.y, RING1)) if (e.alive) battle.applyStatus(e, 'sleep', { duration: AURA_DUR, source: unit });
+              for (const e of battle.foesInRadius(a.x, a.y, RING1)) {
+                if (!e.alive) continue;
+                const reenter = !pulsed.has(e) && !e.buffs.some((b) => (b.status ?? b.key) === 'sleep' && b.timeLeft > AURA_DUR + 1e-9);
+                pulsed.add(e);
+                battle.applyStatus(e, 'sleep', { duration: AURA_DUR, source: unit, reenter });
+              }
             }
           },
           onEnd({ battle, unit }) {
@@ -1199,7 +1216,8 @@ const KITS = {
             onHit({ battle, unit, x, y }) {
               if (!unit.mem.hornFlare) return;
               unit.mem.hornFlare = false;
-              (unit.mem.flares ??= []).push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
+              if (unit.mem.flares == null) unit.mem.flares = [];
+              unit.mem.flares.push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
               battle.fx('zone', { x, y, id: unit.id, r: num(bb.projectile_range, 1.7), duration: num(bb.projectile_delay_time, 6) });
             },
           },
@@ -1787,7 +1805,7 @@ const KITS = {
     };
     const cutCost = (a, v) => {
       if (!a || !(v > 0)) return;
-      a.mem.svashCostBase ??= a.base.cost;
+      if (a.mem.svashCostBase == null) a.mem.svashCostBase = a.base.cost;
       a.base.cost = Math.max(0, a.base.cost - v);
     };
     const slash = (battle, caster, atk) => {
@@ -1985,11 +2003,16 @@ const KITS = {
       skills: lazySkills({
         skchr_thorn2_1: () => ({
           kind: instantKind(chess, def),
+          // an AUTO skill (skill_table 自动触发) that throws at an ally: it fires as soon as its SP is full, with or
+          // without an enemy — the basic DEFAULT rule waited for an attack, so with no enemy around it sat at 7/7
+          // (GitHub #124 「引星棘刺一技能不会在满技力时自动释放」)
+          trigger: { rule: 'SP_FULL' },
           onStart({ battle, unit }) {
             const t = battle.alliesInGrid(unit).filter((a) => a.hp > 0).sort((a, b) => a.hpRatio - b.hpRatio || b.blocking.length - a.blocking.length || dist(a, unit) - dist(b, unit) || a.id - b.id)[0];
             if (!t) return;
             const z = { type: 'guard', r: t.tileR, c: t.tileC, x: t.x, y: t.y, t: 0, acc: 0, dur: num(bb.projectile_delay_time, 6) + extend(battle, unit) };
-            (unit.mem.zones ??= []).push(z);
+            if (unit.mem.zones == null) unit.mem.zones = [];
+            unit.mem.zones.push(z);
             battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: RING1, duration: z.dur });
           },
         }),
@@ -2000,8 +2023,9 @@ const KITS = {
               .sort((a, b) => a.s.blockCnt - b.s.blockCnt || dist(a, unit) - dist(b, unit) || a.id - b.id)
               .slice(0, Math.max(1, num(bb.max_target_token, 3)));
             const dur = num(bb.projectile_delay_time, 19) + extend(battle, unit);
+            if (unit.mem.zones == null) unit.mem.zones = [];
             for (const a of ops) {
-              (unit.mem.zones ??= []).push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
+              unit.mem.zones.push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
               battle.fx('zone', { x: a.x, y: a.y, id: unit.id, r: RING1, duration: dur });
             }
           },
@@ -2030,7 +2054,8 @@ const KITS = {
           // it drifts away from her deployment tile ("移动方向始终为远离棘刺部署位置中心的方向")
           const dx = t.x - unit.x, dy = t.y - unit.y, len = Math.hypot(dx, dy) || 1;
           const z = { x: t.x, y: t.y, vx: (dx / len) * speed, vy: (dy / len) * speed, t: 0, acc: 0, dur: baseDur + extra };
-          (unit.mem.zones ??= []).push(z);
+          if (unit.mem.zones == null) unit.mem.zones = [];
+          unit.mem.zones.push(z);
           battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: r0, duration: z.dur });
         },
       },
@@ -2541,7 +2566,8 @@ const KITS = {
             c.dmg.type = 'elemental';
             c.dmg.element = 'apoptosis';
             c.dmg.canDodge = false;
-            (c.dmg.tags ||= []).push('nymphBreak');
+            if (!c.dmg.tags) c.dmg.tags = [];
+            c.dmg.tags.push('nymphBreak');
           }, { owner: unit, priority: -10 });
         }
       },

@@ -1,0 +1,648 @@
+{
+  "_README": "真言（char_4204_mantra）—— CASTER/primcaster，外援干员。数据取自 simpfun 参照（`.workbuddy/simpfun-ref/`），不凭印象。",
+  "_pendingWhy": "内容包工具只加载 *.json。本文件故意带 .pending：**数据已就位，但该干员的 kit 还没实现**。AGENTS §十.2 要求\"每引入一位新干员就按官方口径做完整（技能/天赋/召唤物/范围/数值/素材引用）\"⇒ 只有数据没有 kit 的是半成品 ⇒ 做完 kit + 探针后用 `--enable` 去掉 .pending 再启用。",
+  "_来源": "simpfun 参照 `.workbuddy/simpfun-ref/data_chess.json`（只读固化）；字段投影规则见 `.workbuddy/tools/a7-gen-reserve-packs.mjs`。",
+  "_待做": [
+    "kit：server/sim/content/kits/reserve-mantra.js（并在 kits/reserve.js 里接线）",
+    "每条技能一条\"先红后绿\"探针（AGENTS §三）",
+    "素材引用：avatar / portrait / spine / skillIcon 四条在磁盘上真的存在（b-verify-asset-refs.mjs）",
+    "skillIcon 的名字可能落在未落盘的 `<skill>` 上 ⇒ 跑素材引用判据"
+  ],
+  "pack": "mantra",
+  "version": 1,
+  "targetBase": "0.1.6",
+  "note": "真言（外援）—— primcaster（kit 待实现）",
+  "chess": [
+    {
+      "tier": 6,
+      "isHidden": false,
+      "visible": false,
+      "charId": "char_4204_mantra",
+      "name": "真言",
+      "appellation": "Mantra",
+      "rarity": 6,
+      "profession": "CASTER",
+      "subProfessionId": "primcaster",
+      "subProfessionName": null,
+      "position": "RANGED",
+      "nationId": "rhodes",
+      "bonds": [
+        "emptyShip"
+      ],
+      "garrisonIds": [],
+      "price": 4,
+      "sellPrice": 1,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_mantra_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 1071,
+        "atk": 583,
+        "def": 107,
+        "res": 15,
+        "cost": 21,
+        "blockCnt": 1,
+        "bat": 1.6,
+        "aspd": 100,
+        "respawnTime": 70,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "rangeId": "3-1",
+      "rangeGrid": [
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -1,
+          2
+        ]
+      ],
+      "dmgType": "arts",
+      "attackKind": "ranged",
+      "projectile": "bolt",
+      "canHitFly": true,
+      "targetPriority": null,
+      "trait": {
+        "desc": "攻击造成法术伤害，可以造成元素伤害",
+        "descRaw": "攻击造成<@ba.kw>法术伤害</>，可以造成<@ba.kw>元素伤害</>",
+        "bb": {},
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "skill": {
+        "skillId": "skchr_mantra_3",
+        "iconId": "skchr_mantra_3",
+        "name": "无言为真",
+        "level": 4,
+        "desc": "攻击范围扩大，范围内敌人隐匿失效且麻痹层数上限降为2，攻击力+170%同时攻击2个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层麻痹（至多3次），范围内敌人麻痹层数每超过上限1层在目标及1名敌人间跳跃1次110%攻击力的元素伤害，跳跃间存在短暂间隔",
+        "descRaw": "攻击范围<@ba.vup>扩大</>，范围内敌人<$ba.invisible>隐匿</>失效且<$ba.palsy>麻痹</>层数上限<@ba.vdown>降为2</>，攻击力<@ba.vup>+170%</>同时攻击<@ba.vup>2</>个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层<$ba.palsy>麻痹</>（至多3次），范围内敌人<$ba.palsy>麻痹</>层数每<@ba.vup>超过上限</>1层在目标及1名敌人间跳跃1次<@ba.vup>110%</>攻击力的元素伤害，跳跃间存在短暂间隔",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 40,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 52,
+        "initSp": 24,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "atk": 1.7,
+          "attack@max_target": 2,
+          "atk_scale": 1.1,
+          "max_target": 2,
+          "chain_times": 1,
+          "max_trigger_cnt": 3,
+          "interval_projectile_trigger": 1.5,
+          "per_active": 2
+        },
+        "bbStr": {},
+        "rangeId": "3-17",
+        "rangeGrid": [
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            -1,
+            3
+          ],
+          [
+            -2,
+            1
+          ],
+          [
+            -2,
+            2
+          ],
+          [
+            -2,
+            3
+          ]
+        ],
+        "prefabId": "skchr_mantra_3",
+        "trigger": {
+          "rule": "DEFAULT",
+          "rawRule": "DEFAULT"
+        },
+        "index": 2,
+        "overrideTokenKey": null,
+        "adaptationNote": "反隐、两层麻痹上限与溢出元素伤害已实现；溢出按间隔对两个范围内目标结算，非原作完整弹道跳跃。"
+      },
+      "talents": [
+        {
+          "index": 0,
+          "name": "噤声限域",
+          "desc": "场上敌人触发麻痹效果时立即受到相当于真言攻击力135%的元素伤害，且触发麻痹时有10%概率不消耗麻痹层数",
+          "descRaw": "场上敌人触发<$ba.palsy>麻痹</>效果时立即受到相当于真言攻击力135%的元素伤害，且触发<$ba.palsy>麻痹</>时有10%概率不消耗<$ba.palsy>麻痹</>层数",
+          "bb": {
+            "atk_scale": 1.35,
+            "prob": 0.1
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        },
+        {
+          "index": 1,
+          "name": "全局洞悉",
+          "desc": "距离真言最近的一个侵入点出场的敌人出现时立刻获得1层麻痹",
+          "descRaw": "距离真言最近的一个侵入点出场的敌人出现时立刻获得1层<$ba.palsy>麻痹</>",
+          "bb": {},
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        }
+      ],
+      "tokens": [],
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_4204_mantra",
+        "portrait": "char_4204_mantra_1",
+        "spine": "char_4204_mantra",
+        "skillIcon": "skchr_mantra_3",
+        "subProfIcon": "sub_primcaster_icon"
+      },
+      "skills": [
+        {
+          "skillId": "skchr_mantra_1",
+          "iconId": "skchr_mantra_1",
+          "name": "共鸣溃缩",
+          "level": 4,
+          "desc": "下次攻击造成攻击力230%的法术伤害并附带伤害15%的神经损伤，若目标处于神经损伤爆发期间则额外造成150%攻击力的元素伤害",
+          "descRaw": "下次攻击造成攻击力<@ba.vup>230%</>的法术伤害并附带伤害<@ba.vup>15%</>的<$ba.dt.neural2>神经损伤</>，若目标处于<$ba.dt.neural2>神经损伤</>爆发期间则额外造成<@ba.vup>150%</>攻击力的元素伤害",
+          "skillType": "AUTO",
+          "durationType": "NONE",
+          "duration": -1,
+          "spType": "INCREASE_WHEN_ATTACK",
+          "spCost": 3,
+          "initSp": 0,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk_scale": 2.3,
+            "ep_damage_ratio": 0.15,
+            "element_atk_scale": 1.5
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_mantra_1",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 0,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "自动强化下一次攻击，结算神经损伤与爆发期附加元素伤害。"
+        },
+        {
+          "skillId": "skchr_mantra_2",
+          "iconId": "skchr_mantra_2",
+          "name": "意识联协",
+          "level": 4,
+          "desc": "攻击间隔小幅度缩短，攻击造成攻击力170%的法术伤害并跳跃至其他2名敌人造成攻击力100%的法术伤害，均附带伤害13%的神经损伤，若目标处于神经损伤爆发期间则附带18%攻击力的元素伤害",
+          "descRaw": "攻击间隔<@ba.vup>小幅度缩短</>，攻击造成攻击力<@ba.vup>170%</>的法术伤害并跳跃至其他<@ba.vup>2</>名敌人造成攻击力<@ba.vup>100%</>的法术伤害，均附带伤害<@ba.vup>13%</>的<$ba.dt.neural2>神经损伤</>，若目标处于<$ba.dt.neural2>神经损伤</>爆发期间则附带<@ba.vup>18%</>攻击力的元素伤害",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 25,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 33,
+          "initSp": 16,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "base_attack_time": -0.6,
+            "attack@atk_scale": 1.7,
+            "attack@chain.atk_scale": 1,
+            "attack@ep_damage_ratio": 0.13,
+            "attack@times": 3,
+            "chain_times": 2,
+            "attack@element_atk_scale": 0.18
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_mantra_2",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 1,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "链式攻击按网页版1.7格距离选择后续目标，附带神经损伤与爆发期元素伤害。"
+        },
+        {
+          "skillId": "skchr_mantra_3",
+          "iconId": "skchr_mantra_3",
+          "name": "无言为真",
+          "level": 4,
+          "desc": "攻击范围扩大，范围内敌人隐匿失效且麻痹层数上限降为2，攻击力+170%同时攻击2个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层麻痹（至多3次），范围内敌人麻痹层数每超过上限1层在目标及1名敌人间跳跃1次110%攻击力的元素伤害，跳跃间存在短暂间隔",
+          "descRaw": "攻击范围<@ba.vup>扩大</>，范围内敌人<$ba.invisible>隐匿</>失效且<$ba.palsy>麻痹</>层数上限<@ba.vdown>降为2</>，攻击力<@ba.vup>+170%</>同时攻击<@ba.vup>2</>个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层<$ba.palsy>麻痹</>（至多3次），范围内敌人<$ba.palsy>麻痹</>层数每<@ba.vup>超过上限</>1层在目标及1名敌人间跳跃1次<@ba.vup>110%</>攻击力的元素伤害，跳跃间存在短暂间隔",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 40,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 52,
+          "initSp": 24,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk": 1.7,
+            "attack@max_target": 2,
+            "atk_scale": 1.1,
+            "max_target": 2,
+            "chain_times": 1,
+            "max_trigger_cnt": 3,
+            "interval_projectile_trigger": 1.5,
+            "per_active": 2
+          },
+          "bbStr": {},
+          "rangeId": "3-17",
+          "rangeGrid": [
+            [
+              2,
+              1
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -1,
+              3
+            ],
+            [
+              -2,
+              1
+            ],
+            [
+              -2,
+              2
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          "prefabId": "skchr_mantra_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": null,
+          "isDefault": true,
+          "adaptationNote": "反隐、两层麻痹上限与溢出元素伤害已实现；溢出按间隔对两个范围内目标结算，非原作完整弹道跳跃。"
+        }
+      ],
+      "isReserve": true,
+      "chessId": "chess_mantra_a"
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_4204_mantra": {
+      "avatar": "/assets/char/avatar/char_4204_mantra.webp",
+      "avatarE2": "/assets/char/avatar/char_4204_mantra_2.webp",
+      "portrait": "/assets/char/portrait/char_4204_mantra_1.webp",
+      "portraitE2": "/assets/char/portrait/char_4204_mantra_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_4204_mantra/front/char_4204_mantra.skel",
+          "atlas": "/assets/spine/op/char_4204_mantra/front/char_4204_mantra.atlas",
+          "textures": [
+            "/assets/spine/op/char_4204_mantra/front/char_4204_mantra.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Loop",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.6,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 3.333,
+            "Skill_1": 1.6,
+            "Skill_2_Begin": 0.267,
+            "Skill_2_End": 0.333,
+            "Skill_2_Loop": 2.667,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 2.333,
+            "Skill_3_Loop": 1.6,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.433
+            ],
+            "Skill_1": [
+              0.433
+            ],
+            "Skill_3_Loop": [
+              0.467
+            ]
+          },
+          "bounds": {
+            "x": -253.373,
+            "y": -5.32,
+            "width": 432.443,
+            "height": 393.457
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_4204_mantra/back/char_4204_mantra.skel",
+          "atlas": "/assets/spine/op/char_4204_mantra/back/char_4204_mantra.atlas",
+          "textures": [
+            "/assets/spine/op/char_4204_mantra/back/char_4204_mantra.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": null,
+              "loop": "Skill_1",
+              "end": null,
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": null,
+                "loop": "Skill_1",
+                "end": null,
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Loop",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.6,
+            "Default": 0,
+            "Idle": 3.333,
+            "Skill_1": 1.6,
+            "Skill_2_Begin": 0.267,
+            "Skill_2_End": 0.333,
+            "Skill_2_Loop": 2.667,
+            "Skill_3_Begin": 0.333,
+            "Skill_3_End": 0.333,
+            "Skill_3_Idle": 2.333,
+            "Skill_3_Loop": 1.6,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.433
+            ],
+            "Skill_1": [
+              0.433
+            ],
+            "Skill_3_Loop": [
+              0.467
+            ]
+          },
+          "bounds": {
+            "x": 136.39,
+            "y": -4.32,
+            "width": 446.545,
+            "height": 394.998
+          }
+        }
+      }
+    }
+  }
+}

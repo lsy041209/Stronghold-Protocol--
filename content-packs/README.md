@@ -65,9 +65,31 @@ node .workbuddy/tools/content-packs.mjs revert
   "targetBase": "0.1.2",    // 针对的游戏版本（仅记录，不强制）
   "note": "一句话说明",       // 可选
   "chess":   [ /* 干员记录，见 干员模板 */ ],
-  "enemies": [ /* 敌人记录，见 敌人模板 */ ]
+  "enemies": [ /* 敌人记录，见 敌人模板 */ ],
+  "tokens":  [ /* 召唤物 / 装置记录，可选 —— 见下 */ ],
+  "spine":   { /* charId → assets.json 的 chars 条目，可选 */ }
 }
 ```
+
+### 召唤物 / 装置：`tokens` 块
+
+干员记录里的 **`tokens: ["token_x"]` 只声明「我拥有这个召唤物」**；召唤物本身要写在本包的顶层 `tokens` 数组里，
+`apply` 把它写进 `data/tokens.json`、`revert` 再删掉（各条带 `"pack"` 标记，与干员/敌人同一套可逆机制）。
+
+漏了这一步的症状很好认：`test/data.test.js` 报 **`token_x: owner chess_xxx_a`**（`actual: undefined`）——
+干员记录引用了一个 token 文件里根本不存在的召唤物。
+
+* **`owners` 必须与干员记录互相对应**：`tokens[].owners` 里每个 chessId，其记录的 `tokens` 都要含这个 tokenId。
+* **`variants.<chessId>` 是「这个干员带出来的那份」**，是 `test/data.test.js` 逐条检查的对象：
+  `sources`（只能是 `talent` / `skill` / `display`，至少一项）、`bySkill`（键**恰好**是该干员非默认技能的
+  `index`，没有就写 `{}`）、`byModule`（精锐才有，键 = 其它模组 id + `none`）、以及 `stats` / `trait` / `talents`。
+  一个 `owners` 里列了、`variants` 里却没写的召唤物，即使不报错也是不完整的。
+* **`placeable` 不是随便写的**：`test/data.test.js` 断言 `placeable === (displayType !== 'HIDDEN' && 有 talent/skill 来源)`。
+  棋子（望）是**天赋**造出来的，所以 `tokenKey` 与赫默的医疗探机一样**留 `null`**（`tokenKey` 只给
+  「天赋容器 token」那种情况用），而 `variants.<owner>.sources` 写 `["talent"]`。
+* **不要手改 `data/tokens.json`**：它是 `build-data` 的产物，手改会在下一次重建时消失，而且 `revert` 找不到它
+  —— 那正是「干员被 revert 掉、token 却留在数据里变成孤儿」的来源。
+
 
 **先写普通干员，精锐不用再写一遍。** 加一个 `elite: { … }` 块写「和普通哪里不一样」，工具会：
 

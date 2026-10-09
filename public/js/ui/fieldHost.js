@@ -19,7 +19,13 @@ const METHODS = ['setStage', 'setCamera', 'setPrep', 'enterBattle', 'pushSnapsho
 // direction-step hooks (ui/facingWheel.js): optional — the wheel falls back to the engine's dev hooks when absent;
 // setPen (enemy preview pen list), prepField ({ kind, side, mirror } of the Final Assault prep), stripesUnder (the view
 // stripes range previews under the units itself) — render/app.js; the DOM fallback lacks them (→ null)
-const OPTIONAL = ['pieceScreenRect', 'setSettings', 'off', 'tileScreen', 'holdPiece', 'setPieceDir', 'setPen', 'prepField', 'stripesUnder'];
+//
+// 🔴 **`setWangMarks`（望的跟子/补子标记）2026-10-06 补登 —— 它就是"幽灵棋子画不出来"的最后一跳**（第 5 任 B）：
+//    `guardView` 只转发 `METHODS` + `OPTIONAL` 里的名字，**没登记 ⇒ 静默什么都不做**（不抛、不警告、护栏也不会红）。
+//    实测（用户机日志）：`[wangmarks] … follow=15 draw=undefined` —— `view.setWangMarks` 在 screens 手里**根本不存在**，
+//    而 `render/app.js` 那边**确实导出了它**（所以上一任的源码断言是绿的 ✗）。
+//    判据：`test/render/wang-pieces.test.js` 的「guardView 必须转发 screens 用到的每个方法」（**先证过会红**）。
+const OPTIONAL = ['setWangMarks', 'pieceScreenRect', 'setSettings', 'off', 'tileScreen', 'holdPiece', 'setPieceDir', 'setPen', 'prepField', 'stripesUnder'];
 
 /**
  * Camera padding (px) that keeps the field clear of the DOM HUD (top bar + bond strip, team panel, shop bar /

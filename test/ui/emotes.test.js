@@ -43,9 +43,9 @@ describe('emote catalog (shared/constants.js)', () => {
     const doc = EMOTE_THEMES.find((t) => t.themeId === 'emoticon_foolsday_doctor');
     assert.deepEqual(doc.emotes.map((e) => e.picId),
       ['pic_fooldoctor_01_battle', 'pic_fooldoctor_02_battle', 'pic_fooldoctor_04_battle', 'pic_fooldoctor_05_battle', 'pic_fooldoctor_06_battle', 'pic_fooldoctor_08_battle']);
-    assert.equal(emoteArtPath('autochess_battle_fooldoctor_06'), '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.png');
-    assert.equal(emoteArtPath('autochess_battle_nice_cooperate'), '/assets/local/emoticon/basic/pic_cooperate_battle.png');
-    assert.equal(emoteArtPath('slug_autochess_battle_thanks'), '/assets/local/emoticon/slug/pic_thanks_battle.png');
+    assert.equal(emoteArtPath('autochess_battle_fooldoctor_06'), '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.webp');
+    assert.equal(emoteArtPath('autochess_battle_nice_cooperate'), '/assets/local/emoticon/basic/pic_cooperate_battle.webp');
+    assert.equal(emoteArtPath('slug_autochess_battle_thanks'), '/assets/local/emoticon/slug/pic_thanks_battle.webp');
     assert.equal(emoteArtGroup('autochess_battle_dying'), 'emoticon/basic_2');
     for (const e of EMOTE_CATALOG) assert.match(e.picId, /^pic_.+_battle$/, e.id);
   });
@@ -130,7 +130,7 @@ describe('data/emotes.json (tools/build-emotes.mjs)', () => {
       ['emoticon_originium_slug', 'slug', ['b_1']],
       ['emoticon_x', 'x', ['a_1', 'a_2']],
     ]);
-    assert.equal(doc.emotes.find((x) => x.id === 'a_1').art, '/assets/local/emoticon/x/pic_a9_battle.png');
+    assert.equal(doc.emotes.find((x) => x.id === 'a_1').art, '/assets/local/emoticon/x/pic_a9_battle.webp');
     assert.equal(doc.emotes.find((x) => x.id === 'a_1').label, 'emoticon_x 1', 'no official text: generic aria label');
     assert.equal(doc.emotes.find((x) => x.id === 'b_1').label, '虫动 1');
     assert.equal(doc.themes[0].name, '表情套组：虫动');
@@ -229,8 +229,11 @@ print(json.dumps({
     for (const e of EMOTE_CATALOG) {
       const file = path.join(ROOT, 'public', emoteArtPath(e.id));
       assert.ok(existsSync(file), file);
-      const png = readFileSync(file);
-      assert.equal(png.subarray(1, 4).toString(), 'PNG', file);
+      // the tree's art is converted to WebP (.workbuddy/tools/convert-assets.py rewrites emoteArtPath too), so assert
+      // the real container instead of a bare non-empty read
+      const buf = readFileSync(file);
+      assert.equal(buf.subarray(0, 4).toString('latin1'), 'RIFF', file);
+      assert.equal(buf.subarray(8, 12).toString('latin1'), 'WEBP', file);
     }
   });
 });
@@ -243,8 +246,8 @@ describe('public/js/ui/emotes.js helpers', () => {
     removeItem: (k) => { store.delete(k); },
   };
   const manifest = { version: 1, groups: {
-    'emoticon/fooldoctor': { pic_fooldoctor_08_battle: { path: '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.png', w: 115, h: 115 } },
-    'ui/battle': { emoji_bubble_bkg: { path: '/assets/local/ui/battle/emoji_bubble_bkg.png', w: 108, h: 97 } },
+    'emoticon/fooldoctor': { pic_fooldoctor_08_battle: { path: '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.webp', w: 115, h: 115 } },
+    'ui/battle': { emoji_bubble_bkg: { path: '/assets/local/ui/battle/emoji_bubble_bkg.webp', w: 108, h: 97 } },
   } };
   const realFetch = globalThis.fetch;
 
@@ -256,11 +259,11 @@ describe('public/js/ui/emotes.js helpers', () => {
       await data.invalidate('local');
       await data.load('local');
       const { emoteArtUrl, emoteUiSprite } = await import('../../public/js/ui/emotes.js');
-      assert.equal(emoteArtUrl('autochess_battle_fooldoctor_06'), '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.png');
+      assert.equal(emoteArtUrl('autochess_battle_fooldoctor_06'), '/assets/local/emoticon/fooldoctor/pic_fooldoctor_08_battle.webp');
       assert.equal(emoteArtUrl('autochess_battle_fooldoctor_05'), null, 'unlisted');
       assert.equal(emoteArtUrl('happy'), null, 'v1 id');
       assert.equal(emoteArtUrl('__proto__'), null);
-      assert.equal(emoteUiSprite('emoji_bubble_bkg'), '/assets/local/ui/battle/emoji_bubble_bkg.png');
+      assert.equal(emoteUiSprite('emoji_bubble_bkg'), '/assets/local/ui/battle/emoji_bubble_bkg.webp');
       assert.equal(emoteUiSprite('emoji_bkg'), null);
     } finally {
       globalThis.fetch = realFetch;

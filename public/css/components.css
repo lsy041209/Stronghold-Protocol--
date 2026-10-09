@@ -730,6 +730,117 @@
 @keyframes pb-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes pb-sweep { 0% { left: -30%; opacity: 1; } 100% { left: 120%; opacity: 0; } }
 
+/* ---- result box (ResultDialog: the round's 作战结束 dialog; GitHub #235, PR #112) ---------------------------------- */
+/* A centred framed plate in the tone's colour — four corner ticks, chevrons either side of the title, one light sweep.
+   Under the phase banner (z-index) so a phase change and a result never fight over the same pixels; pointer-events:
+   none — the settlement stays clickable. */
+.rdialog {
+  --rd: var(--mint-500);
+  --rd-glow: rgba(23, 249, 183, .35);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--z-banner) - 1);
+  pointer-events: none;
+}
+.rdialog--orange { --rd: var(--orange-hi); --rd-glow: rgba(255, 122, 51, .38); }
+.rdialog--red { --rd: var(--red-premium); --rd-glow: rgba(255, 84, 84, .38); }
+.rdialog__box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  min-width: 5.6rem;
+  max-width: 88vw;
+  padding: .34rem .5rem .3rem;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(9, 13, 12, .96), rgba(6, 9, 8, .97));
+  border: 1px solid var(--rd);
+  box-shadow: 0 0 .5rem var(--rd-glow), inset 0 0 .7rem rgba(0, 0, 0, .8), 0 .1rem .5rem rgba(0, 0, 0, .6);
+  overflow: hidden;
+  animation: rd-open 320ms var(--ease-out) backwards;
+}
+.rdialog__box::before, .rdialog__box::after {
+  /* hairlines inside the frame, so the plate reads as a plate and not a card */
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rd) 20%, var(--rd) 80%, transparent);
+  opacity: .8;
+}
+.rdialog__box::before { top: 4px; }
+.rdialog__box::after { bottom: 4px; }
+.rdialog__tick { position: absolute; width: .16rem; height: .16rem; border: 2px solid var(--rd); opacity: .9; }
+.rdialog__tick--tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.rdialog__tick--tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.rdialog__tick--bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.rdialog__tick--br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+.rdialog__micro {
+  font-family: var(--font-display);
+  font-size: .13rem;
+  letter-spacing: .48em;
+  padding-left: .48em;
+  color: var(--rd);
+  animation: rd-wipe 300ms 60ms var(--ease-out) backwards;
+}
+.rdialog__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .22rem;
+  animation: rd-wipe 340ms 110ms var(--ease-out) backwards;
+}
+.rdialog__row::after {
+  /* one-shot light sweep across the title */
+  content: '';
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -25%;
+  width: 18%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .26), transparent);
+  transform: skewX(-20deg);
+  opacity: 0;
+  animation: rd-sweep 780ms 300ms var(--ease-out) forwards;
+}
+.rdialog__title {
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  padding-left: .14em;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 0 .26rem var(--rd-glow), 0 2px 0 rgba(0, 0, 0, .55);
+}
+.rdialog__chev { --ch-h: .46rem; height: .46rem; flex: none; }
+.rdialog__sub {
+  font-size: .18rem;
+  letter-spacing: .1em;
+  color: var(--text-lo);
+  text-align: center;
+  animation: rd-wipe 340ms 180ms var(--ease-out) backwards;
+}
+.rdialog.is-leaving .rdialog__box { animation: rd-close 260ms var(--ease-in-out) forwards; }
+@keyframes rd-open { from { transform: scale(.9, .78); opacity: 0; } }
+@keyframes rd-close { to { transform: scale(.96, .86); opacity: 0; } }
+@keyframes rd-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes rd-sweep { 0% { left: -25%; opacity: 1; } 100% { left: 115%; opacity: 0; } }
+@media (max-width: 720px) {
+  .rdialog__box { min-width: 0; width: 92vw; padding: .26rem .3rem .22rem; }
+  .rdialog__title { font-size: .42rem; }
+  .rdialog__chev { --ch-h: .34rem; height: .34rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rdialog__box, .rdialog__row, .rdialog__row::after, .rdialog__micro, .rdialog__sub { animation: none; }
+}
+
 /* ---- ping pill ------------------------------------------------------------------------------------- */
 .ping {
   --pc: var(--mint-400);
@@ -941,3 +1052,143 @@
   --bk-c: var(--red-premium);
 }
 .crash__box h2 { font-size: .3rem; }
+
+/* ==== 我方追加（guest mode / LAN panel / server status pill）=================================================
+   来源：0.1.4.1 冷备 public/css/components.css 中
+/* ---- server status pill (在线人数 / 房间数) -------------------------------------------------------- */
+/* Population readout filled from ui/serverStatus.js (polls GET /healthz). Sized like .ping so the lobby topbar
+   stays one even row; --sm is for the compact lobby topbar and the title screen's connection strip. */
+.serverpill {
+  display: inline-flex;
+  align-items: center;
+  gap: .1rem;
+  height: .32rem;
+  padding: 0 .14rem;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, .5);
+  border: 1px solid var(--line);
+  color: var(--text-lo);
+  line-height: 1;
+  white-space: nowrap;
+}
+.serverpill__stat { display: inline-flex; align-items: center; gap: .04rem; }
+.serverpill__icon { width: .15rem; height: .15rem; margin-right: .01rem; color: var(--mint-500); }
+.serverpill__value { font-size: .18rem; font-weight: 700; color: var(--text-hi); }
+.serverpill__label { font-size: .12rem; color: var(--text-dim); letter-spacing: .04em; }
+.serverpill__sep { width: 1px; height: .15rem; background: var(--line); }
+.serverpill--sm { height: .26rem; padding: 0 .11rem; gap: .08rem; }
+.serverpill--sm .serverpill__value { font-size: .15rem; }
+.serverpill--sm .serverpill__icon { width: .13rem; height: .13rem; }
+.serverpill--sm .serverpill__label { font-size: .11rem; }
+/* A reading we could not get is muted, never a confident "0 在线". */
+.serverpill--off { color: var(--text-dim); }
+.serverpill--off .serverpill__icon { color: var(--text-dim); }
+.serverpill--off .serverpill__label { color: var(--text-dim); }
+/* A narrow VIEWPORT is the wrong test for a phone here: the game is landscape, so a real phone reports around
+   844×390 CSS px — wider than the 560px a max-width rule would need. A short viewport is what identifies a phone,
+   and it cannot catch a desktop window by accident. */
+@media (max-height: 500px), (max-width: 560px) {
+  /* Phones: keep the numbers, drop the words (the icons still say which is which). */
+  .serverpill__label { display: none; }
+  .serverpill { gap: .08rem; }
+  .serverpill__sep { display: none; }
+}
+
+/* 延迟 + 在线/房间 并排（用户 2026-10-06 要求「左上角延迟旁边标在线人数与房间数」）。
+   对局内顶栏 .gtop__meta 与赛前步骤页头 .stephead__meta 都是**竖排**容器，直接加子节点会把顶栏撑成三行；
+   包一层横排即可。标题页 .title-conn 与大堂 .topbar__left 本来就是横排，不需要它。
+   窄屏的文字收缩交给上面那条 media query，这里只管排成一行。 */
+.statusrow { display: flex; align-items: center; gap: .1rem; min-width: 0; }
+
+/* ---- guest mode (js/ui/serverLink.js) ----------------------------------------------------------------
+   Shown only while this page plays on somebody else's server (?server=): it is an announcement, not an
+   error, so it takes mint instead of orange and sits one notch above the connection banner, which keeps
+   the bottom centre when both are up. Uses the same chrome as .conn-banner on purpose. */
+.conn-banner--server {
+  bottom: .58rem;
+  border-color: rgba(78, 216, 175, .5);
+  box-shadow: 0 .08rem .3rem rgba(0, 0, 0, .6), 0 0 .2rem rgba(78, 216, 175, .12);
+}
+.conn-banner--server .icon { color: var(--mint-500); }
+.sp-conn .conn-banner--server { bottom: 1.02rem; }
+.sp-in-match .conn-banner--server { top: calc(1.8rem + var(--sa-t, 0px)); bottom: auto; }
+.sp-in-match.sp-conn .conn-banner--server { top: calc(2.5rem + var(--sa-t, 0px)); }
+
+/* ---- 联机面板 (js/ui/lanPanel.js, 桌面版外壳) --------------------------------------------------------
+   只补三个东西：常显的药丸、面板里的行排版、以及"地址"这一行的等宽字。
+   面板本体刻意复用 .modal（游戏自己的对话框）：它已经有 88vh 上限 + 内容区 overflow:auto，
+   正好满足横屏下"内容比一屏高就滚动，而不是把下面的按钮顶出屏幕"——这一条正是安卓版
+   HostOverlay 手搓 ScrollView 要解决的问题，这里直接用游戏的现成机制。
+
+   药丸用 pointer-events 分层：外层穿透、只有按钮收事件，否则右上角会留一片点不到的死区。 */
+.lan-pill-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-conn);
+  pointer-events: none;
+}
+.lan-pill {
+  position: absolute;
+  top: .1rem;
+  right: .12rem;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .06rem;
+  padding: .04rem .14rem;
+  font-family: var(--font-num);
+  font-size: .15rem;
+  line-height: 1.5;
+  letter-spacing: .04em;
+  color: var(--mint-500);
+  background: var(--bg-glass);
+  border: 1px solid var(--line-2);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.lan-pill:hover { color: var(--mint-400); border-color: var(--mint-700); }
+.lan-pill:active { cursor: grabbing; }
+.lan-pill--live {
+  color: var(--mint-400);
+  border-color: rgba(78, 216, 175, .5);
+  box-shadow: 0 0 .18rem rgba(23, 249, 183, .16);
+}
+.lan-pill__icon { font-size: .15rem; flex: none; }
+
+.lan-sheet .lan-key { font-size: .16rem; color: var(--text-hi); }
+.lan-sheet .lan-key--idle { color: var(--text-lo); }
+.lan-sheet .lan-hint { margin-top: .14rem; font-size: .13rem; color: var(--text-lo); }
+.lan-sheet .lan-row { display: flex; align-items: center; gap: .08rem; margin-top: .04rem; }
+.lan-sheet .lan-addr {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: .14rem;
+  color: var(--text-md);
+  overflow-wrap: anywhere;
+  /* selectable: the panel's own 复制 is the main path, but a broken clipboard must never
+     leave the address un-copyable by hand. */
+  -webkit-user-select: text;
+  user-select: text;
+}
+.lan-sheet .lan-addr--hot { color: var(--mint-400); }
+.lan-sheet .lan-status {
+  display: flex;
+  flex-direction: column;
+  gap: .03rem;
+  margin-top: .1rem;
+  font-size: .13rem;
+  color: var(--text-lo);
+  line-height: 1.6;
+}
+.lan-sheet .lan-divider {
+  height: 1px;
+  margin-top: .2rem;
+  background: linear-gradient(90deg, transparent, var(--line-2) 15%, var(--line-2) 85%, transparent);
+}
+.lan-sheet .lan-join { display: flex; align-items: flex-end; gap: .08rem; margin-top: .04rem; }
+.lan-sheet .lan-join .field { flex: 1 1 auto; min-width: 0; }
+.lan-sheet .btn--block { margin-top: .1rem; }
+

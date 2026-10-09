@@ -1,0 +1,704 @@
+{
+  "_README": "凯尔希·思衡托（char_1052_kalts2）—— MEDIC/watchman，外援干员。数据取自 simpfun 参照（`.workbuddy/simpfun-ref/`），不凭印象。",
+  "_pendingWhy": "内容包工具只加载 *.json。本文件故意带 .pending：**数据已就位，但该干员的 kit 还没实现**。AGENTS §十.2 要求\"每引入一位新干员就按官方口径做完整（技能/天赋/召唤物/范围/数值/素材引用）\"⇒ 只有数据没有 kit 的是半成品 ⇒ 做完 kit + 探针后用 `--enable` 去掉 .pending 再启用。",
+  "_来源": "simpfun 参照 `.workbuddy/simpfun-ref/data_chess.json`（只读固化）；字段投影规则见 `.workbuddy/tools/a7-gen-reserve-packs.mjs`。",
+  "_待做": [
+    "kit：server/sim/content/kits/reserve-kalts2.js（并在 kits/reserve.js 里接线）",
+    "每条技能一条\"先红后绿\"探针（AGENTS §三）",
+    "素材引用：avatar / portrait / spine / skillIcon 四条在磁盘上真的存在（b-verify-asset-refs.mjs）",
+    "skillIcon 的名字可能落在未落盘的 `<skill>` 上 ⇒ 跑素材引用判据"
+  ],
+  "pack": "kalts2",
+  "version": 1,
+  "targetBase": "0.1.6",
+  "note": "凯尔希·思衡托（外援）—— watchman（kit 待实现）",
+  "chess": [
+    {
+      "tier": 6,
+      "isHidden": false,
+      "visible": false,
+      "charId": "char_1052_kalts2",
+      "name": "凯尔希·思衡托",
+      "appellation": "Kal'tsit·Esperanta",
+      "rarity": 6,
+      "profession": "MEDIC",
+      "subProfessionId": "watchman",
+      "subProfessionName": null,
+      "position": "RANGED",
+      "nationId": "rhodes",
+      "bonds": [
+        "emptyShip"
+      ],
+      "garrisonIds": [],
+      "price": 4,
+      "sellPrice": 1,
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_kalts2_b",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "stats": {
+        "maxHp": 1393,
+        "atk": 408,
+        "def": 220,
+        "res": 0,
+        "cost": 19,
+        "blockCnt": 1,
+        "bat": 2.85,
+        "aspd": 100,
+        "respawnTime": 70,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "moveSpeed": 1,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "rangeId": "y-6",
+      "rangeGrid": [
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -2,
+          1
+        ]
+      ],
+      "dmgType": "heal",
+      "attackKind": "heal",
+      "projectile": "orb",
+      "canHitFly": false,
+      "targetPriority": null,
+      "trait": {
+        "desc": "恢复友方单位生命，并且可以起飞",
+        "descRaw": "恢复友方单位生命，并且可以<$ba.liftoff>起飞</>",
+        "bb": {},
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "skill": {
+        "skillId": "skchr_kalts2_3",
+        "iconId": "skchr_kalts2_3",
+        "name": "破梏重生",
+        "level": 4,
+        "desc": "立刻获得战术锚点，攻击力+110%，攻击间隔大幅缩小，额外治疗1个目标，部署战术锚点后，自身移动至该位置，并使攻击范围内最多2名友方干员可以部署至自身攻击范围的另一位置",
+        "descRaw": "立刻获得战术锚点，攻击力<@ba.vup>+110%</>，攻击间隔<@ba.vup>大幅缩小</>，额外治疗<@ba.vup>1</>个目标，部署战术锚点后，自身<$ba.addash>移动</>至该位置，并使攻击范围内最多<@ba.vup>2</>名友方干员可以部署至自身攻击范围的另一位置",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 35,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 65,
+        "initSp": 25,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "atk": 1.1,
+          "base_attack_time": -1.55
+        },
+        "bbStr": {},
+        "rangeId": null,
+        "rangeGrid": null,
+        "prefabId": "skchr_kalts2_3",
+        "trigger": {
+          "rule": "DEFAULT",
+          "rawRule": "DEFAULT"
+        },
+        "index": 2,
+        "overrideTokenKey": "token_10068_kalts2_mtship",
+        "adaptationNote": "自动选择友军附近的合法锚点并牵引至多两名友军；没有额外的手动锚点或部署按钮。"
+      },
+      "talents": [
+        {
+          "index": 0,
+          "name": "遗尘守望",
+          "desc": "生命上限和防御力+25%，阻挡数+1，阻挡范围扩大，部署后生命修复单元升空，自身起飞",
+          "descRaw": "生命上限和防御力+25%，阻挡数+1，阻挡范围扩大，部署后生命修复单元升空，自身<$ba.liftoff>起飞</>",
+          "bb": {
+            "max_hp": 0.25,
+            "def": 0.25,
+            "block_cnt": 1,
+            "block_radius_scale": 0.23
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        },
+        {
+          "index": 1,
+          "name": "医者丰碑",
+          "desc": "其他友方干员进入自身攻击范围时立刻获得1层护盾并额外获得一次每秒回复50点生命值的增益治疗，持续30秒（不可叠加），增益治疗对【罗德岛】干员的效果翻倍",
+          "descRaw": "其他友方干员进入自身攻击范围时立刻获得1层<$ba.shield>护盾</>并额外获得一次每秒回复50点生命值的增益治疗，持续30秒（不可叠加），增益治疗对【罗德岛】干员的效果翻倍",
+          "bb": {
+            "buff_duration": 30,
+            "hp_recovery_per_sec": 50,
+            "rhodes_bonus": 2,
+            "attack@buff_duration": 30,
+            "attack@hp_recovery_per_sec": 50,
+            "attack@rhodes_bonus": 2
+          },
+          "bbStr": {},
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ]
+          ],
+          "tokenKey": null,
+          "hidden": false,
+          "fromModule": false
+        }
+      ],
+      "tokens": [
+        "token_10068_kalts2_mtship"
+      ],
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_1052_kalts2",
+        "portrait": "char_1052_kalts2_1",
+        "spine": "char_1052_kalts2",
+        "skillIcon": "skchr_kalts2_3",
+        "subProfIcon": "sub_watchman_icon"
+      },
+      "skills": [
+        {
+          "skillId": "skchr_kalts2_1",
+          "iconId": "skchr_kalts2_1",
+          "name": "应急肃正防线",
+          "level": 4,
+          "desc": "攻击力+60%，攻击速度+25，所有其他起飞的友方干员阻挡范围扩大",
+          "descRaw": "攻击力<@ba.vup>+60%</>，攻击速度<@ba.vup>+25</>，所有其他<$ba.liftoff>起飞</>的友方干员阻挡范围扩大",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 35,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 35,
+          "initSp": 18,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk": 0.6,
+            "attack@block_radius_scale": 0.23,
+            "attack_speed": 25
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_kalts2_1",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 0,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "修复形态自动起飞并扩大其他起飞干员的阻挡范围。"
+        },
+        {
+          "skillId": "skchr_kalts2_2",
+          "iconId": "skchr_kalts2_2",
+          "name": "保护性拒止",
+          "level": 4,
+          "desc": "攻击范围扩大，攻击力+110%，攻击变为射出医疗单元（优先选择敌人），击中时对目标周围所有敌人造成相当于攻击力310%的真实伤害，使其停顿5秒并回复目标周围所有友方干员相当于攻击力135%的生命\n攻击装有10发弹药，可以随时停止技能",
+          "descRaw": "攻击范围<@ba.vup>扩大</>，攻击力<@ba.vup>+110%</>，攻击变为射出医疗单元（优先选择敌人），击中时对目标周围所有敌人造成相当于攻击力<@ba.vup>310%</>的真实伤害，使其<$ba.sluggish>停顿</><@ba.vup>5</>秒并回复目标周围所有友方干员相当于攻击力<@ba.vup>135%</>的生命\n<@ba.rem>攻击装有10发弹药，可以随时停止技能</>",
+          "skillType": "MANUAL",
+          "durationType": "AMMO",
+          "duration": -1,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 35,
+          "initSp": 18,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk": 1.1,
+            "attack@atk_scale": 3.1,
+            "attack@heal_scale": 1.35,
+            "attack@sluggish": 5,
+            "attack@trigger_time": 10
+          },
+          "bbStr": {},
+          "rangeId": "y-11",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -1,
+              2
+            ],
+            [
+              -1,
+              3
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -2,
+              1
+            ]
+          ],
+          "prefabId": "skchr_kalts2_2",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 1,
+          "overrideTokenKey": null,
+          "isDefault": false,
+          "adaptationNote": "优先选敌并同时治疗附近友军；医疗单元以即时范围结算适配，弹药用尽自动结束。"
+        },
+        {
+          "skillId": "skchr_kalts2_3",
+          "iconId": "skchr_kalts2_3",
+          "name": "破梏重生",
+          "level": 4,
+          "desc": "立刻获得战术锚点，攻击力+110%，攻击间隔大幅缩小，额外治疗1个目标，部署战术锚点后，自身移动至该位置，并使攻击范围内最多2名友方干员可以部署至自身攻击范围的另一位置",
+          "descRaw": "立刻获得战术锚点，攻击力<@ba.vup>+110%</>，攻击间隔<@ba.vup>大幅缩小</>，额外治疗<@ba.vup>1</>个目标，部署战术锚点后，自身<$ba.addash>移动</>至该位置，并使攻击范围内最多<@ba.vup>2</>名友方干员可以部署至自身攻击范围的另一位置",
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 35,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 65,
+          "initSp": 25,
+          "maxChargeTime": 1,
+          "increment": 1,
+          "bb": {
+            "atk": 1.1,
+            "base_attack_time": -1.55
+          },
+          "bbStr": {},
+          "rangeId": null,
+          "rangeGrid": null,
+          "prefabId": "skchr_kalts2_3",
+          "trigger": {
+            "rule": "DEFAULT",
+            "rawRule": "DEFAULT"
+          },
+          "index": 2,
+          "overrideTokenKey": "token_10068_kalts2_mtship",
+          "isDefault": true,
+          "adaptationNote": "自动选择友军附近的合法锚点并牵引至多两名友军；没有额外的手动锚点或部署按钮。"
+        }
+      ],
+      "isReserve": true,
+      "chessId": "chess_kalts2_a"
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_1052_kalts2": {
+      "avatar": "/assets/char/avatar/char_1052_kalts2.webp",
+      "avatarE2": "/assets/char/avatar/char_1052_kalts2_2.webp",
+      "portrait": "/assets/char/portrait/char_1052_kalts2_1.webp",
+      "portraitE2": "/assets/char/portrait/char_1052_kalts2_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_1052_kalts2/front/char_1052_kalts2.skel",
+          "atlas": "/assets/spine/op/char_1052_kalts2/front/char_1052_kalts2.atlas",
+          "textures": [
+            "/assets/spine/op/char_1052_kalts2/front/char_1052_kalts2.webp",
+            "/assets/spine/op/char_1052_kalts2/front/char_1052_kalts22.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": "Attack_Begin",
+              "loop": "Attack_Loop",
+              "end": "Attack_End"
+            },
+            "attackDown": {
+              "begin": null,
+              "loop": "Attack_Down_Loop",
+              "end": null
+            },
+            "skill": {
+              "begin": "Attack_Begin",
+              "loop": "Attack_Loop",
+              "end": "Attack_End",
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": "Die",
+            "move": null,
+            "stun": {
+              "begin": null,
+              "loop": "Stun",
+              "end": null
+            },
+            "skills": {
+              "0": {
+                "begin": "Attack_Begin",
+                "loop": "Attack_Loop",
+                "end": "Attack_End",
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Attack",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": "Skill_2_Idle"
+              },
+              "2": {
+                "begin": null,
+                "loop": "Skill_3_Attack",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_Begin": 0.333,
+            "Attack_Down_Loop": 3,
+            "Attack_End": 0.333,
+            "Attack_Loop": 3,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 2,
+            "Skill_2_Attack": 3,
+            "Skill_2_Begin": 0.667,
+            "Skill_2_End": 0.667,
+            "Skill_2_Idle": 2,
+            "Skill_3_Attack": 1.333,
+            "Skill_3_End": 0.5,
+            "Skill_3_Idle": 1.333,
+            "Skill_3_Restart_Begin": 1,
+            "Skill_3_Restart_End": 1,
+            "Skill_Down_2_Attack": 3,
+            "Skill_Down_3_Attack": 1.333,
+            "Start": 1,
+            "Stun": 2
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_Down_Loop": [
+              0.6
+            ],
+            "Attack_Loop": [
+              0.6
+            ],
+            "Skill_2_Attack": [
+              0.533
+            ],
+            "Skill_3_Attack": [
+              0.4
+            ],
+            "Skill_3_Restart_Begin": [
+              0.667
+            ],
+            "Skill_Down_2_Attack": [
+              0.533
+            ],
+            "Skill_Down_3_Attack": [
+              0.433
+            ]
+          },
+          "bounds": {
+            "x": -1133.371,
+            "y": 26.373,
+            "width": 1290.307,
+            "height": 906.006
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_1052_kalts2/back/char_1052_kalts2.skel",
+          "atlas": "/assets/spine/op/char_1052_kalts2/back/char_1052_kalts2.atlas",
+          "textures": [
+            "/assets/spine/op/char_1052_kalts2/back/char_1052_kalts2.webp",
+            "/assets/spine/op/char_1052_kalts2/back/char_1052_kalts22.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": "Attack_Begin",
+              "loop": "Attack_Loop",
+              "end": "Attack_End"
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": "Attack_Begin",
+              "loop": "Attack_Loop",
+              "end": "Attack_End",
+              "via": "attack",
+              "index": 0,
+              "idle": null
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": "Attack_Begin",
+                "loop": "Attack_Loop",
+                "end": "Attack_End",
+                "via": "attack",
+                "index": 0,
+                "idle": null
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Attack",
+                "end": "Skill_2_End",
+                "index": 1,
+                "idle": "Skill_2_Idle"
+              },
+              "2": {
+                "begin": null,
+                "loop": "Skill_3_Attack",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack_Begin": 0.333,
+            "Attack_End": 0.333,
+            "Attack_Loop": 3,
+            "Default": 0,
+            "Idle": 2,
+            "Skill_2_Attack": 3,
+            "Skill_2_Begin": 0.667,
+            "Skill_2_End": 0.667,
+            "Skill_2_Idle": 2,
+            "Skill_3_Attack": 1.333,
+            "Skill_3_End": 0.5,
+            "Skill_3_Idle": 1.333,
+            "Skill_3_Restart_Begin": 1,
+            "Skill_3_Restart_End": 1,
+            "Start": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack_Loop": [
+              0.6
+            ],
+            "Skill_2_Attack": [
+              0.533
+            ],
+            "Skill_3_Attack": [
+              0.433
+            ],
+            "Skill_3_Restart_Begin": [
+              0.667
+            ]
+          },
+          "bounds": {
+            "x": -1133.371,
+            "y": 26.373,
+            "width": 1290.307,
+            "height": 906.006
+          }
+        }
+      }
+    }
+  }
+}

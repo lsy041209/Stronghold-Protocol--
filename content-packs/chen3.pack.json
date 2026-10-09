@@ -1,0 +1,749 @@
+{
+  "_README": "赤刃明霄陈（外援干员）—— 近卫·术战者。数据全部取自官方表，不凭印象：",
+  "_来源": "character_table.json（char_1050_chen3）+ skill_table.json（skchr_chen3_1/2/3），缓存于 .cache/",
+  "_面板口径": "tier 6 的官方记录口径 = phase 2 / level 1（精锐由工具派生成 phase 2 / level 50 / skillLevel 7）。stats 用官方 character_table.phases[2] 的关键帧线性插值到 Lv1，四舍五入；潜 0、信赖 0 —— 与 docs/research/03-operators.json 的 meta.statFormula 完全一致。",
+  "_范围": "本体 1-1 = [[0,0],[0,1]]；S2 = x-1（13 格）；S3 = 3-12（8 格）。均按 rangeId 从 data/chess.json 反查得到，非自造。",
+  "pack": "chen3",
+  "version": 1,
+  "targetBase": "0.1.3",
+  "note": "赤刃明霄陈（外援）—— 术战者近卫：弱点伤害 / 多段斩击+位移 / 可转向穿透剑气",
+  "chess": [
+    {
+      "chessId": "chess_chen3_a",
+      "charId": "char_1050_chen3",
+      "tier": 6,
+      "_tier测试版": "⚠️ 测试期临时降到 **3 阶且可见**。**为什么不是 1 阶**：test/data.test.js 有一条硬规则 `if (c.tier <= 2 && !c.isGolden) assert.ok(idx.length <= 2, 'E1 chess has no S3')` —— tier 1-2 的普通干员**只能带 2 个技能**（贝洛内正好只有 2 个所以没事）。陈有 S1/S2/S3 三个技能，降到 1 阶会让**三技能无法测试**，违背「以测试技能正常使用」的目的。**3 阶是能带 3 个技能的最低阶级。** ⚠️ **[2026-10-06 12:2x T-5 已落实上面这句「正式值」]** 现在就是 `tier 6 + visible:false`（用户裁：**正式版也要装这四位外援**）——「测试期」三个字已过期，保留作历史。",
+      "_tier正式": 6,
+      "name": "赤刃明霄陈",
+      "appellation": "Ch'en the Dawnstreak",
+      "rarity": 6,
+      "profession": "WARRIOR",
+      "subProfessionId": "artsfghter",
+      "subProfessionName": "术战者",
+      "position": "MELEE",
+      "nationId": "yan",
+      "bonds": [
+        "yanShip"
+      ],
+      "garrisonIds": [],
+      "tokens": [],
+      "price": 4,
+      "sellPrice": 1,
+      "isReserve": true,
+      "_reserve": "外援干员：可以装在五阶/六阶的外援槽位上；卡池份数由槽位阶级决定（gamedata.poolCopiesForTier：五阶 8 张、六阶 5 张），够 3 张合成精锐。⚠️ **T-5 之后它只走外援槽这条路**（不再同时是可见干员）。",
+      "visible": false,
+      "isHidden": false,
+      "_可见性测试版": "⚠️ 测试期设为**可见**，让它进入 1 阶商店卡池，出现率与其他 1 阶干员**平分**（同一个 tier-1 odds 池按份数加权）。⚠️ **[已过期]** 原文写「正式值：visible=false / isHidden=true」—— 实际 T-5 只把 `visible` 改 false，**`isHidden` 保持 `false`**（照 `bellone.pack.json` 的外援形态，那份连 `isHidden` 字段都没有）。",
+      "_poolCopies测试版": "⚠️ 测试期**不写 poolCopies**（去掉 999999 那个外援用的无限覆盖），这样它就按 tier-1 的常规份数（12）参与，出现率才真正和其他 1 阶干员平分。",
+      "status": {
+        "phase": 2,
+        "level": 1,
+        "skillLevel": 4,
+        "equipLevel": 0
+      },
+      "_status": "官方 tier 6 的基础记录就是 phase 2 / Lv1（见 chess_char_6_01_a 等）；精锐由工具的 elite 段派生成 phase 2 / Lv50 / skillLevel 7。",
+      "stats": {
+        "maxHp": 2211,
+        "atk": 542,
+        "def": 352,
+        "res": 15,
+        "cost": 21,
+        "blockCnt": 1,
+        "bat": 1.25,
+        "aspd": 100,
+        "respawnTime": 70,
+        "moveSpeed": 1,
+        "spRecovery": 1,
+        "hpRecoveryPerSec": 0,
+        "tauntLevel": 0,
+        "massLevel": 0,
+        "deployLimit": 1,
+        "deckStack": 0
+      },
+      "_stats": "精英2 Lv1（官方插值）。Lv50 为 2596/612/392，Lv90 为 2910/670/425，供对照。",
+      "immunities": {
+        "stun": false,
+        "silence": false,
+        "sleep": false,
+        "frozen": false,
+        "levitate": false
+      },
+      "dmgType": "arts",
+      "_dmgType": "术战者特性「攻击造成法术伤害」—— 本体就是法术伤害，不是技能期间才转。",
+      "attackKind": "melee",
+      "projectile": "none",
+      "canHitFly": false,
+      "targetPriority": null,
+      "rangeId": "1-1",
+      "rangeGrid": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "trait": {
+        "desc": "攻击造成法术伤害",
+        "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+        "bb": {},
+        "bbStr": {},
+        "rangeGrid": null
+      },
+      "talents": [
+        {
+          "name": "形意洞照",
+          "desc": "攻击力+13%，攻击速度+13，攻击变为弱点伤害",
+          "descRaw": "攻击力<@ba.vup>+13%</>，攻击速度<@ba.vup>+13</>，攻击变为<$ba.weaknessatk>弱点伤害</>",
+          "bb": {
+            "atk": 0.13,
+            "attack_speed": 13
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        },
+        {
+          "name": "寒暑觉知",
+          "desc": "未受到伤害时，每7秒随机治疗自身一定（攻击力的30%~160%）生命值，并闪避下次物理与法术攻击",
+          "descRaw": "未受到伤害时，每7秒随机治疗自身一定（攻击力的30%~160%）生命值，并闪避下次物理与法术攻击",
+          "bb": {
+            "stack_time": 7,
+            "heal_atk_scale_min": 30,
+            "heal_atk_scale_max": 161
+          },
+          "bbStr": {},
+          "rangeGrid": null,
+          "tokenKey": null,
+          "hidden": false
+        }
+      ],
+      "_talents": "官方 E2 档（PHASE_2、潜0）的原始黑板。⚠️ 每项必须带 rangeGrid / tokenKey 两个键（官方记录就是这形状）—— 少了它们，精锐的 composeTalents 会补出 undefined 而记录里没有，test/data.test.js 的 deepStrictEqual 会当场红。弱点伤害（ba.weaknessatk）是本作没有的伤害类型，由 kit 侧近似实现并在此注明。",
+      "skill": {
+        "skillId": "skchr_chen3_1",
+        "iconId": "skchr_chen3_1",
+        "name": "赤霄·奔夜",
+        "level": 4,
+        "desc": "攻击力+65%，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+        "descRaw": "攻击力<@ba.vup>+65%</>，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+        "skillType": "MANUAL",
+        "durationType": "NONE",
+        "duration": 18,
+        "spType": "INCREASE_WITH_TIME",
+        "spCost": 27,
+        "initSp": 6,
+        "maxChargeTime": 1,
+        "increment": 1,
+        "bb": {
+          "atk": 0.65
+        },
+        "bbStr": {},
+        "rangeId": null,
+        "rangeGrid": null,
+        "prefabId": "skchr_chen3_1",
+        "trigger": {
+          "rule": "DEFAULT"
+        },
+        "canHitFly": true
+      },
+      "skills": [
+        {
+          "skillId": "skchr_chen3_1",
+          "iconId": "skchr_chen3_1",
+          "name": "赤霄·奔夜",
+          "level": 4,
+          "desc": "攻击力+65%，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+          "descRaw": "攻击力<@ba.vup>+65%</>，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+          "isDefault": true,
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 18,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 27,
+          "initSp": 6,
+          "bb": {
+            "atk": 0.65
+          },
+          "trigger": {
+            "rule": "DEFAULT"
+          },
+          "canHitFly": true
+        },
+        {
+          "skillId": "skchr_chen3_2",
+          "iconId": "skchr_chen3_2",
+          "name": "赤霄·绝影-驰",
+          "level": 4,
+          "desc": "对周围最近的1名敌人发动10次斩击，每次造成攻击力390%的法术伤害，敌人被击倒时转移至目标周围最近的其他敌人并使剩余攻击次数+1；斩击结束时，若目标未被击倒且其位置可部署则移动至该位置，否则返回原位置。接下来攻击力+230%，获得40%物理和法术闪避",
+          "descRaw": "对周围最近的1名敌人发动<@ba.vup>10</>次斩击，每次造成攻击力<@ba.vup>390%</>的法术伤害，敌人被击倒时转移至目标周围最近的其他敌人并使剩余攻击次数<@ba.vup>+1</>；斩击结束时，若目标未被击倒且其位置可部署则<$ba.addash>移动</>至该位置，否则返回原位置。接下来攻击力<@ba.vup>+230%</>，获得<@ba.vup>40%</>物理和法术闪避",
+          "isDefault": false,
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 6,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 24,
+          "initSp": 11,
+          "bb": {
+            "atk_scale": 3.9,
+            "chen3_s2[respawn_buff].atk": 2.3,
+            "chen3_s2[respawn_buff].prob": 0.4
+          },
+          "rangeId": "x-1",
+          "rangeGrid": [
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              -1
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          "trigger": {
+            "rule": "DEFAULT"
+          }
+        },
+        {
+          "skillId": "skchr_chen3_3",
+          "iconId": "skchr_chen3_3",
+          "name": "赤霄·天喟",
+          "level": 4,
+          "desc": "技能开启时向前释放一道可转向的剑气，对穿过的敌人造成相当于其当前生命值6%的法术伤害（至少造成自身攻击力530%的法术伤害）；攻击范围扩大，每次攻击对最多3名地面敌人造成3次攻击力165%的法术伤害",
+          "descRaw": "技能开启时向前释放一道可转向的剑气，对穿过的敌人造成相当于其当前生命值<@ba.vup>6%</>的法术伤害（至少造成自身攻击力<@ba.vup>530%</>的法术伤害）；攻击范围扩大，每次攻击对最多<@ba.vup>3</>名地面敌人造成<@ba.vup>3</>次攻击力<@ba.vup>165%</>的法术伤害",
+          "isDefault": false,
+          "skillType": "MANUAL",
+          "durationType": "NONE",
+          "duration": 20,
+          "spType": "INCREASE_WITH_TIME",
+          "spCost": 29,
+          "initSp": 12,
+          "bb": {
+            "hp_ratio": 0.06,
+            "projectile_min_atk_scale": 5.3,
+            "attack@atk_scale": 1.65,
+            "attack@max_target": 3
+          },
+          "rangeId": "3-12",
+          "rangeGrid": [
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              1
+            ]
+          ],
+          "trigger": {
+            "rule": "DEFAULT"
+          },
+          "canHitFly": true
+        }
+      ],
+      "_skills": "S1/S2/S3 全部取官方 L4 数值（普通记录 skillLevel=4）。精锐的 L7 数值写在 elite.skills。",
+      "module": {
+        "id": null,
+        "name": null,
+        "type": null,
+        "level": 0,
+        "active": false
+      },
+      "assets": {
+        "avatar": "char_1050_chen3",
+        "portrait": "char_1050_chen3_1",
+        "spine": "char_1050_chen3",
+        "skillIcon": "skchr_chen3_3",
+        "subProfIcon": "sub_artsfghter_icon"
+      },
+      "_assets": "⚠️ 用的是官方命名（charId + 官方立绘后缀规律：_a 用 _1、_b 用 _2、spine 同名）。但本作客户端（0.1.3）的素材集里**没有**这三位的美术（assets.json 里 char_1050_chen3 出现 0 次），所以目前会退回首字占位符「赤」。等美术补进来后**不用改这个包**即可自动生效。subProfIcon 与 portrait 命名均按官方记录的实际规律核过。",
+      "upgradeNum": 3,
+      "upgradeChessId": "chess_chen3_b",
+      "_upgrade": "三张合成精锐 —— 这是用户要的「拿到三个并合成精锐干员后获得真实强度」。外援卡池份数按槽位阶级给（五阶 8 张 / 六阶 5 张），够 3 张。⚠️ 包工具默认写 upgradeNum:0，必须显式写（它在白名单里）。",
+      "elite": {
+        "name": "赤刃明霄陈",
+        "skills": [
+          {
+            "skillId": "skchr_chen3_1",
+            "iconId": "skchr_chen3_1",
+            "name": "赤霄·奔夜",
+            "level": 7,
+            "desc": "攻击力+65%，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+            "descRaw": "攻击力<@ba.vup>+65%</>，攻击变为二连击，攻击使目标敌人特殊能力失效持续至技能结束",
+            "isDefault": true,
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 18,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 27,
+            "initSp": 6,
+            "bb": {
+              "atk": 0.65
+            },
+            "trigger": {
+              "rule": "DEFAULT"
+            },
+            "canHitFly": true
+          },
+          {
+            "skillId": "skchr_chen3_2",
+            "iconId": "skchr_chen3_2",
+            "name": "赤霄·绝影-驰",
+            "level": 7,
+            "desc": "对周围最近的1名敌人发动10次斩击，每次造成攻击力430%的法术伤害，敌人被击倒时转移至目标周围最近的其他敌人并使剩余攻击次数+1；斩击结束时，若目标未被击倒且其位置可部署则移动至该位置，否则返回原位置。接下来攻击力+260%，获得50%物理和法术闪避",
+            "descRaw": "对周围最近的1名敌人发动<@ba.vup>10</>次斩击，每次造成攻击力<@ba.vup>430%</>的法术伤害，敌人被击倒时转移至目标周围最近的其他敌人并使剩余攻击次数<@ba.vup>+1</>；斩击结束时，若目标未被击倒且其位置可部署则<$ba.addash>移动</>至该位置，否则返回原位置。接下来攻击力<@ba.vup>+260%</>，获得<@ba.vup>50%</>物理和法术闪避",
+            "isDefault": false,
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 6,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 23,
+            "initSp": 12,
+            "bb": {
+              "atk_scale": 4.3,
+              "chen3_s2[respawn_buff].atk": 2.6,
+              "chen3_s2[respawn_buff].prob": 0.5
+            },
+            "rangeId": "x-1",
+            "rangeGrid": [
+              [
+                2,
+                0
+              ],
+              [
+                1,
+                -1
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                -2
+              ],
+              [
+                0,
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                -1,
+                -1
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ],
+              [
+                -2,
+                0
+              ]
+            ],
+            "trigger": {
+              "rule": "DEFAULT"
+            }
+          },
+          {
+            "skillId": "skchr_chen3_3",
+            "iconId": "skchr_chen3_3",
+            "name": "赤霄·天喟",
+            "level": 7,
+            "desc": "技能开启时向前释放一道可转向的剑气，对穿过的敌人造成相当于其当前生命值6%的法术伤害（至少造成自身攻击力550%的法术伤害）；攻击范围扩大，每次攻击对最多3名地面敌人造成3次攻击力180%的法术伤害",
+            "descRaw": "技能开启时向前释放一道可转向的剑气，对穿过的敌人造成相当于其当前生命值<@ba.vup>6%</>的法术伤害（至少造成自身攻击力<@ba.vup>550%</>的法术伤害）；攻击范围扩大，每次攻击对最多<@ba.vup>3</>名地面敌人造成<@ba.vup>3</>次攻击力<@ba.vup>180%</>的法术伤害",
+            "isDefault": false,
+            "skillType": "MANUAL",
+            "durationType": "NONE",
+            "duration": 20,
+            "spType": "INCREASE_WITH_TIME",
+            "spCost": 28,
+            "initSp": 15,
+            "bb": {
+              "hp_ratio": 0.06,
+              "projectile_min_atk_scale": 5.5,
+              "attack@atk_scale": 1.8,
+              "attack@max_target": 3
+            },
+            "rangeId": "3-12",
+            "rangeGrid": [
+              [
+                1,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                -1,
+                0
+              ],
+              [
+                -1,
+                1
+              ]
+            ],
+            "trigger": {
+              "rule": "DEFAULT"
+            },
+            "canHitFly": true
+          }
+        ],
+        "modules": [
+          {
+            "uniEquipId": "uniequip_002_chen3",
+            "name": "记忆残页",
+            "typeName": "AFT-X",
+            "typeIcon": "aft-x",
+            "icon": "uniequip_002_chen3",
+            "isDefault": true,
+            "level": 1,
+            "attr": {
+              "maxHp": 240,
+              "atk": 30
+            },
+            "_attr": "官方「记忆残页」**一级**数据 = 生命240/攻击30（二级 340/48、三级 420/60）。⚠️ 用一级是因为包工具派生精锐时固定写 status.equipLevel=1，而 test/data.test.js 断言 `module.level === status.equipLevel` —— 写三级会当场红。官方 tier6 精锐是 equipLevel 3，那是 build-data 的路径，内容包走不到。",
+            "traitOverride": {
+              "desc": "攻击造成法术伤害；未阻挡敌人时攻击速度+8",
+              "descRaw": "攻击造成<@ba.kw>法术伤害</>；未阻挡敌人时攻击速度<@ba.vup>+8</>",
+              "bb": {
+                "attack_speed": 8
+              },
+              "bbStr": {},
+              "rangeGrid": null,
+              "moduleDesc": "未阻挡敌人时攻击速度+8",
+              "moduleDescRaw": "未阻挡敌人时攻击速度<@ba.vup>+8</>"
+            },
+            "talentChanges": [
+              {
+                "talentIndex": 1,
+                "name": "寒暑觉知",
+                "desc": "未受到伤害时，每6秒随机治疗自身一定（攻击力的50%~200%）生命值，并闪避下次物理与法术攻击",
+                "descRaw": "未受到伤害时，每6秒随机治疗自身一定（攻击力的<@ba.vup>50%</>~<@ba.vup>200%</>）生命值，并闪避下次物理与法术攻击",
+                "bb": {
+                  "stack_time": 6,
+                  "heal_atk_scale_min": 50,
+                  "heal_atk_scale_max": 201
+                },
+                "bbStr": {},
+                "hidden": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "enemies": [],
+  "spine": {
+    "char_1050_chen3": {
+      "name": "赤刃明霄陈",
+      "avatar": "/assets/char/avatar/char_1050_chen3.webp",
+      "avatarE2": "/assets/char/avatar/char_1050_chen3_2.webp",
+      "portrait": "/assets/char/portrait/char_1050_chen3_1.webp",
+      "portraitE2": "/assets/char/portrait/char_1050_chen3_2.webp",
+      "spine": {
+        "front": {
+          "skel": "/assets/spine/op/char_1050_chen3/front/char_1050_chen3.skel",
+          "atlas": "/assets/spine/op/char_1050_chen3/front/char_1050_chen3.atlas",
+          "textures": [
+            "/assets/spine/op/char_1050_chen3/front/char_1050_chen3.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": "Skill_1_Begin",
+              "loop": "Skill_1_Loop",
+              "end": "Skill_1_End",
+              "index": 0,
+              "idle": "Skill_1_Idle"
+            },
+            "die": "Die",
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": "Skill_1_Begin",
+                "loop": "Skill_1_Loop",
+                "end": "Skill_1_End",
+                "index": 0,
+                "idle": "Skill_1_Idle"
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Disappear",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.233,
+            "Default": 0,
+            "Die": 1,
+            "Idle": 4,
+            "Skill_1_Begin": 0.2,
+            "Skill_1_End": 0.2,
+            "Skill_1_Idle": 2.667,
+            "Skill_1_Loop": 1.233,
+            "Skill_2_Begin": 0.567,
+            "Skill_2_Disappear": 0.167,
+            "Skill_3_Begin": 0.433,
+            "Skill_3_End": 0.267,
+            "Skill_3_Idle": 2.667,
+            "Skill_3_Loop": 1.233,
+            "Start": 1,
+            "Start_2": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.433
+            ],
+            "Skill_1_Loop": [
+              0.433,
+              0.667
+            ],
+            "Skill_3_Loop": [
+              0.533,
+              0.6,
+              0.667
+            ],
+            "Start_2": [
+              0.567
+            ]
+          },
+          "bounds": {
+            "x": -219.881,
+            "y": -15.438,
+            "width": 1226.132,
+            "height": 435.013
+          }
+        },
+        "back": {
+          "skel": "/assets/spine/op/char_1050_chen3/back/char_1050_chen3.skel",
+          "atlas": "/assets/spine/op/char_1050_chen3/back/char_1050_chen3.atlas",
+          "textures": [
+            "/assets/spine/op/char_1050_chen3/back/char_1050_chen3.webp"
+          ],
+          "pma": false,
+          "anims": {
+            "idle": "Idle",
+            "deploy": "Start",
+            "attack": {
+              "begin": null,
+              "loop": "Attack",
+              "end": null
+            },
+            "attackDown": null,
+            "skill": {
+              "begin": "Skill_1_Begin",
+              "loop": "Skill_1_Loop",
+              "end": "Skill_1_End",
+              "index": 0,
+              "idle": "Skill_1_Idle"
+            },
+            "die": null,
+            "move": null,
+            "stun": null,
+            "skills": {
+              "0": {
+                "begin": "Skill_1_Begin",
+                "loop": "Skill_1_Loop",
+                "end": "Skill_1_End",
+                "index": 0,
+                "idle": "Skill_1_Idle"
+              },
+              "1": {
+                "begin": "Skill_2_Begin",
+                "loop": "Skill_2_Disappear",
+                "end": null,
+                "index": 1,
+                "idle": null
+              },
+              "2": {
+                "begin": "Skill_3_Begin",
+                "loop": "Skill_3_Loop",
+                "end": "Skill_3_End",
+                "index": 2,
+                "idle": "Skill_3_Idle"
+              }
+            }
+          },
+          "animations": {
+            "Attack": 1.233,
+            "Default": 0,
+            "Idle": 4,
+            "Skill_1_Begin": 0.2,
+            "Skill_1_End": 0.2,
+            "Skill_1_Idle": 2.667,
+            "Skill_1_Loop": 1.233,
+            "Skill_2_Begin": 0.567,
+            "Skill_2_Disappear": 0.167,
+            "Skill_3_Begin": 0.433,
+            "Skill_3_End": 0.267,
+            "Skill_3_Idle": 1.333,
+            "Skill_3_Loop": 1.233,
+            "Start": 1,
+            "Start_2": 1
+          },
+          "events": [
+            "OnAttack",
+            "OnStart"
+          ],
+          "hits": {
+            "Attack": [
+              0.433
+            ],
+            "Skill_1_Loop": [
+              0.433,
+              0.667
+            ],
+            "Skill_3_Loop": [
+              0.533,
+              0.6,
+              0.667
+            ]
+          },
+          "bounds": {
+            "x": -219.881,
+            "y": -15.438,
+            "width": 1226.132,
+            "height": 435.013
+          }
+        }
+      },
+      "skins": {
+        "char_1050_chen3#2": {
+          "name": "精英2",
+          "group": "默认服装",
+          "avatar": "/assets/char/skin_avatar/char_1050_chen3_2.webp"
+        }
+      }
+    }
+  }
+}

@@ -9,28 +9,24 @@
 // them only the default skill / module is offered. The option rules are shared with the server
 // (shared/protocol.js loadoutOptions / checkLoadout), so a sanitised loadout is always accepted.
 
-import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, RESERVE_TIERS, isReserveTier } from '../../../shared/protocol.js';
+import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { t, N_ } from '../../../shared/i18n.js';
 
-export { MODULE_NONE, RESERVE_TIERS, isReserveTier };
-
-/** 外援 slot count per tier row (5 and 6): the "+" slots `RESERVE_TIERS` rows show. */
-export const RESERVE_SLOTS = LOADOUT_LIMITS.reserveSlots;
-/** Whether a chess record may be equipped in a 外援 slot (data `isReserve`, applied by the content pack). */
-export const isReserveCandidate = (c) => !!c && c.isReserve === true && !c.isGolden && !c.isDiy;
+export { MODULE_NONE };
 
 /** localStorage key (store.js loadPref/savePref prefix `sp.pref.`) and format version. */
 export const LOADOUT_PREF = 'loadout';
 export const LOADOUT_VERSION = 1;
 
 export const PROF_ORDER = ['PIONEER', 'WARRIOR', 'TANK', 'SNIPER', 'CASTER', 'MEDIC', 'SUPPORT', 'SPECIAL'];
-export const PROF_NAME = Object.freeze({ PIONEER: '先锋', WARRIOR: '近卫', TANK: '重装', SNIPER: '狙击', CASTER: '术师', MEDIC: '医疗', SUPPORT: '辅助', SPECIAL: '特种' });
-export const SP_TYPE = Object.freeze({ INCREASE_WITH_TIME: '自动回复', INCREASE_WHEN_ATTACK: '攻击回复', INCREASE_WHEN_TAKEN_DAMAGE: '受击回复', ON_DEPLOY: '被动', 8: '被动' });
+export const PROF_NAME = Object.freeze({ PIONEER: N_('先锋'), WARRIOR: N_('近卫'), TANK: N_('重装'), SNIPER: N_('狙击'), CASTER: N_('术师'), MEDIC: N_('医疗'), SUPPORT: N_('辅助'), SPECIAL: N_('特种') });
+export const SP_TYPE = Object.freeze({ INCREASE_WITH_TIME: N_('自动回复'), INCREASE_WHEN_ATTACK: N_('攻击回复'), INCREASE_WHEN_TAKEN_DAMAGE: N_('受击回复'), ON_DEPLOY: N_('被动'), 8: N_('被动') });
 /** Module attribute keys (ModuleRecord.attr / battle_equip attributeBlackboard) → label + unit. */
 export const ATTR_LABEL = Object.freeze({
-  maxHp: ['生命上限', ''], max_hp: ['生命上限', ''], atk: ['攻击力', ''], def: ['防御力', ''], res: ['法术抗性', ''],
-  magic_resistance: ['法术抗性', ''], aspd: ['攻击速度', ''], attack_speed: ['攻击速度', ''], cost: ['部署费用', ''],
-  blockCnt: ['阻挡数', ''], block_cnt: ['阻挡数', ''], respawnTime: ['再部署时间', '秒'], respawn_time: ['再部署时间', '秒'],
-  baseAttackTime: ['攻击间隔', '秒'], base_attack_time: ['攻击间隔', '秒'], moveSpeed: ['移动速度', ''], hpRecoveryPerSec: ['每秒回复', ''],
+  maxHp: [N_('生命上限'), ''], max_hp: [N_('生命上限'), ''], atk: [N_('攻击力'), ''], def: [N_('防御力'), ''], res: [N_('法术抗性'), ''],
+  magic_resistance: [N_('法术抗性'), ''], aspd: [N_('攻击速度'), ''], attack_speed: [N_('攻击速度'), ''], cost: [N_('部署费用'), ''],
+  blockCnt: [N_('阻挡数'), ''], block_cnt: [N_('阻挡数'), ''], respawnTime: [N_('再部署时间'), N_('秒')], respawn_time: [N_('再部署时间'), N_('秒')],
+  baseAttackTime: [N_('攻击间隔'), N_('秒')], base_attack_time: [N_('攻击间隔'), N_('秒')], moveSpeed: [N_('移动速度'), ''], hpRecoveryPerSec: [N_('每秒回复'), ''],
 });
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -55,7 +51,6 @@ export function parseStored(raw) {
     const x = {};
     if (isInt(e.skill) && e.skill >= 0 && e.skill <= LOADOUT_LIMITS.skillIndex) x.skill = e.skill;
     if (typeof e.module === 'string' && /^[A-Za-z0-9_\-.:]{1,64}$/.test(e.module)) x.module = e.module;
-    if (isReserveTier(e.reserve)) x.reserve = e.reserve;
     if (Object.keys(x).length) out[id] = x;
   }
   return out;
@@ -76,20 +71,58 @@ export const LOADOUT_EXPORT_KIND = 'stronghold.loadout';
 export const LOADOUT_IMPORT_MAX_BYTES = 256 * 1024;
 
 /**
+ * 🔁 2026-10-08（第 54 轮 A）**换装接线**：过滤并净化皮肤选择 `{ [baseChessId]: skinId }`。
+ *    照纸鸢 0.2.1 的 `js__ui__loadoutModel.js:75-85`（我们换基座时整段丢了）。
+ *    `isSkinId`（不能用 `isId`：皮肤 id 带 `@`/`#`）挡掉手工构造的超长 id；条数按 `SKIN_LIMITS.entries` 封顶。
+ */
+export function sanitizeSkins(raw) {
+  const out = {};
+  if (!isObj(raw)) return out;
+  const limit = (SKIN_LIMITS && SKIN_LIMITS.entries) || 160;
+  for (const [id, skinId] of Object.entries(raw)) {
+    if (Object.keys(out).length >= limit) break;
+    if (UNSAFE_IDS.has(id) || !/^[A-Za-z0-9_\-.:]{1,64}$/.test(id)) continue;
+    if (isSkinId(skinId)) out[id] = skinId;
+  }
+  return out;
+}
+
+/**
+ * 🔁 2026-10-08（第 54 轮 A）**增量合并皮肤**：仅覆盖 `importedSkins` 里声明了的干员，其余保留玩家当前配置。
+ *    空的 `skinId` = **删掉**这一位（与 loadout 的 `resetOne` 语义对齐）。照纸鸢 `:90-101`。
+ */
+export function mergeSkins(currentSkins, importedSkins) {
+  if (!isObj(importedSkins)) return currentSkins || {};
+  const next = { ...(currentSkins || {}) };
+  for (const [id, skinId] of Object.entries(importedSkins)) {
+    if (skinId) next[id] = skinId;
+    else delete next[id];
+  }
+  return next;
+}
+
+/**
  * Portable payload of a loadout, as downloaded / copied by 导出.
  * @param {Record<string, any>} entries `room.loadout.entries`
- * @param {{ now?: number }} [o]
+ * @param {{ now?: number, skins?: Record<string, string>|null }} [o]
  */
-export function exportPayload(entries, { now = Date.now() } = {}) {
+export function exportPayload(entries, { now = Date.now(), skins = null } = {}) {
   const clean = {};
   for (const [id, e] of Object.entries(entries || {})) if (isObj(e)) clean[id] = { ...e };
-  return {
+  const out = {
     kind: LOADOUT_EXPORT_KIND,
     v: LOADOUT_VERSION,
     exportedAt: new Date(Number.isFinite(now) ? now : Date.now()).toISOString(),
     count: Object.keys(clean).length,
     entries: clean,
   };
+  // 干员皮肤 (docs/SKINS.md)：并列可选字段、**不 bump `LOADOUT_VERSION`**（照纸鸢 `:118-123`）——
+  //   缺失 = 老文件（皮肤保持不动）；存在 = 整体替换（与 `entries` 的覆盖语义一致）。
+  if (skins && isObj(skins)) {
+    const cleanSkins = sanitizeSkins(skins);
+    if (Object.keys(cleanSkins).length > 0) out.skins = cleanSkins;
+  }
+  return out;
 }
 
 /** Pretty JSON of `exportPayload` — one preset per file / clipboard payload. */
@@ -108,20 +141,26 @@ export function serializeExport(entries, opts) {
 export function parseImport(input) {
   let raw = input;
   if (typeof raw === 'string') {
-    if (raw.length > LOADOUT_IMPORT_MAX_BYTES) return { ok: false, error: '内容过长，无法导入' };
+    if (raw.length > LOADOUT_IMPORT_MAX_BYTES) return { ok: false, error: t('内容过长，无法导入') };
     const text = raw.trim();
-    if (!text) return { ok: false, error: '没有可导入的内容' };
-    try { raw = JSON.parse(text); } catch { return { ok: false, error: '无法识别的内容' }; }
+    if (!text) return { ok: false, error: t('没有可导入的内容') };
+    try { raw = JSON.parse(text); } catch { return { ok: false, error: t('无法识别的内容') }; }
   }
-  if (!isObj(raw)) return { ok: false, error: '无法识别的格式' };
+  if (!isObj(raw)) return { ok: false, error: t('无法识别的格式') };
   const v = isInt(raw.v) ? raw.v : null;
   // a newer envelope may reshuffle fields — refuse instead of silently reading it as something else
-  if (v != null && v > LOADOUT_VERSION) return { ok: false, error: `这份调配来自更新的版本（v${v}），请先更新游戏` };
+  if (v != null && v > LOADOUT_VERSION) return { ok: false, error: t('这份调配来自更新的版本（v{v}），请先更新游戏', { v }) };
   const kind = typeof raw.kind === 'string' ? raw.kind : null;
-  if (kind && kind !== LOADOUT_EXPORT_KIND) return { ok: false, error: '这不是干员调配的数据' };
+  if (kind && kind !== LOADOUT_EXPORT_KIND) return { ok: false, error: t('这不是干员调配的数据') };
   const entries = parseStored(raw);
-  if (!Object.keys(entries).length) return { ok: false, error: '里面没有有效的调配条目' };
-  return { ok: true, entries };
+  // 🔁 2026-10-08（第 54 轮 A）换装接线：并列可选字段 `skins`（照纸鸢 `:155-159`）。
+  //    ⚠️ 边角规矩：**"只带皮肤、不带调配条目"的导入也算合法**（只改了皮肤时也要能导入）——
+  //       所以下面那句"没有有效条目"的判据必须**同时**看 skins，否则会把只带皮肤的包判成空包。
+  const skins = isObj(raw.skins) ? sanitizeSkins(raw.skins) : null;
+  if (!Object.keys(entries).length && (!skins || !Object.keys(skins).length)) {
+    return { ok: false, error: t('里面没有有效的调配或皮肤条目') };
+  }
+  return { ok: true, entries, skins };
 }
 
 // ---- options & choices ---------------------------------------------------------------------------------------------
@@ -205,14 +244,10 @@ export function setChoice(entries, base, golden, patch) {
   const skill = patch && patch.skill !== undefined && opt.skills.includes(patch.skill) ? patch.skill : cur.skill;
   const module = golden && patch && patch.module !== undefined && opt.modules.includes(patch.module) ? patch.module : cur.module;
   const out = { ...(entries || {}) };
-  const prev = out[base.chessId];
-  // an 外援 slot on this operator survives a skill / module edit
-  const keepReserve = isReserveTier(prev?.reserve) ? prev.reserve : null;
   delete out[base.chessId];
   const e = {};
   if (skill !== opt.defaultSkill && skill != null) e.skill = skill;
   if (golden && module !== opt.defaultModule && module != null) e.module = module;
-  if (keepReserve != null) e.reserve = keepReserve;
   if (Object.keys(e).length) out[base.chessId] = e;
   return out;
 }
@@ -223,73 +258,6 @@ export function resetChoice(entries, baseId) {
   const out = { ...entries };
   delete out[baseId];
   return out;
-}
-
-// ---- 外援干员 (reserve operators) -------------------------------------------------------------------------------------
-//
-// A reserve operator is equipped by giving its entry a `reserve: 5|6` slot tier (shared/protocol.js checkLoadout
-// validates it). The slot tier — not the operator's own tier — decides the pool entry, so the same operator may sit in
-// a tier-5 or a tier-6 row. `RESERVE_SLOTS` per row; the rows show empty "+" slots up to that count.
-
-/** The reserve-slot tier a chess occupies (5 / 6), or null when it is not a reserve pick. */
-export const reserveOf = (entries, baseId) => (isReserveTier(entries?.[baseId]?.reserve) ? entries[baseId].reserve : null);
-
-/**
- * The `RESERVE_SLOTS` slots of `tier`'s row: the equipped base ids in slot order, `null` for a free slot. Order comes
- * from the entries map (insertion order), which is stable across an edit.
- * @returns {(string|null)[]}
- */
-export function reserveSlots(entries, tier) {
-  const ids = [];
-  for (const [id, e] of Object.entries(entries || {})) if (e && e.reserve === tier) ids.push(id);
-  const out = ids.slice(0, RESERVE_SLOTS);
-  while (out.length < RESERVE_SLOTS) out.push(null);
-  return out;
-}
-
-/** Every chess equipped in a reserve slot, as `{ id, tier }` (the shape the server's pool seeds from). */
-export function reservePicks(entries) {
-  const out = [];
-  for (const [id, e] of Object.entries(entries || {})) if (isReserveTier(e?.reserve)) out.push({ id, tier: e.reserve });
-  return out;
-}
-
-/**
- * Equip `baseId` in a `tier` reserve slot (fills the row; a full row drops its last slot so the count can never
- * exceed `RESERVE_SLOTS`). Returns the new entries; the caller re-validates through `checkLoadout` anyway.
- */
-export function setReserve(entries, baseId, tier) {
-  if (!isReserveTier(tier) || typeof baseId !== 'string' || !baseId || UNSAFE_IDS.has(baseId)) return entries;
-  const out = { ...(entries || {}) };
-  if (reserveOf(out, baseId) !== tier) {
-    const slots = reserveSlots(out, tier);
-    if (!slots.includes(baseId)) {
-      const free = slots.indexOf(null);
-      if (free === -1) {
-        const evict = slots[RESERVE_SLOTS - 1];
-        if (evict && evict !== baseId) out[evict] = omitReserve(out[evict]);
-      }
-    }
-  }
-  out[baseId] = { ...(out[baseId] || {}), reserve: tier };
-  return out;
-}
-
-/** Remove `baseId` from its reserve slot (卸下); its skill / module choices stay. */
-export function clearReserve(entries, baseId) {
-  const e = entries?.[baseId];
-  if (!e || !isReserveTier(e.reserve)) return entries;
-  const out = { ...entries };
-  const next = omitReserve(e);
-  if (Object.keys(next).length) out[baseId] = next; else delete out[baseId];
-  return out;
-}
-
-/** A copy of an entry without its reserve slot (drops the entry entirely when nothing else is left). */
-function omitReserve(e) {
-  const next = { ...(e || {}) };
-  delete next.reserve;
-  return next;
 }
 
 /**
@@ -306,13 +274,11 @@ export function sanitizeEntries(entries, getChess) {
     const one = {};
     if (isInt(e?.skill)) one.skill = e.skill;
     if (typeof e?.module === 'string') one.module = e.module;
-    if (isReserveTier(e?.reserve)) one.reserve = e.reserve;
     if (!Object.keys(one).length) continue;
     const res = checkLoadout({ [id]: one }, getChess);
     if (!res.ok) {
-      // keep the part that is still legal (e.g. the skill when a module disappeared, or the 外援 slot when the
-      // operator stopped being a candidate)
-      for (const k of ['skill', 'module', 'reserve']) {
+      // keep the part that is still legal (e.g. the skill when a module disappeared)
+      for (const k of ['skill', 'module']) {
         if (one[k] === undefined) continue;
         const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
         if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };
@@ -371,7 +337,7 @@ export function filterRoster(roster, f = {}, entries = {}, getChess = () => null
       if (!effectiveChoice(entries, c, golden).changed) return false;
     }
     if (q) {
-      const hay = [c.name, c.appellation, c.subProfessionName, PROF_NAME[c.profession], ...(c.bonds || []).map((b) => getBond(b)?.name)]
+      const hay = [c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(c.bonds || []).map((b) => getBond(b)?.name)]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
@@ -404,6 +370,29 @@ export function moduleBadge(rec, id = null) {
 }
 
 /**
+ * The two lines of a trait record (data `trait` / `traitBase`, ModuleRecord `traitOverride`, DATA.md §2): `base` = the
+ * 特性 the unit fights with — the class trait, or the module's own wording where the module rewrites it (official
+ * `overrideDescripton`) — and `added` = the module's extra line (official `additionalDescription`), or null. The extra
+ * line comes after the class trait, never instead of it: PRTS flags it 「特性追加」 on every such module, and the sim keeps
+ * the class trait with the module equipped (community report of 2026-10-06, item 16.2: until 0.2.0 the 干员调配 module
+ * card, its 局内数值 and the detail card showed the extra line alone on 114 of the 164 modules the screen offers).
+ * @param {any} trait
+ * @returns {{ base: string, added: string|null }}
+ */
+export function traitLines(trait) {
+  if (!isObj(trait)) return { base: '', added: null };
+  const base = String(trait.descRaw || trait.desc || '');
+  const added = trait.moduleDescRaw || trait.moduleDesc || null;
+  return { base, added: added ? String(added) : null };
+}
+
+/** The whole 特性 text of a trait record: its base line, then the module's extra line (`\n` between; RichText breaks it). */
+export function fullTraitText(trait) {
+  const { base, added } = traitLines(trait);
+  return base && added ? `${base}\n${added}` : base || added || '';
+}
+
+/**
  * Module stat bonus as display rows (non-zero entries only).
  * @param {Record<string, number> | null | undefined} attr
  * @returns {Array<{ key: string, label: string, text: string, positive: boolean }>}
@@ -415,7 +404,7 @@ export function attrRows(attr) {
     if (typeof v !== 'number' || !Number.isFinite(v) || v === 0) continue;
     const [label, unit] = ATTR_LABEL[k] || [k, ''];
     const n = Math.abs(v) < 10 && !Number.isInteger(v) ? Number(v.toFixed(2)) : Math.round(v);
-    out.push({ key: k, label, text: `${v > 0 ? '+' : ''}${n}${unit}`, positive: k === 'cost' || k === 'respawnTime' || k === 'respawn_time' || k === 'baseAttackTime' || k === 'base_attack_time' ? v < 0 : v > 0 });
+    out.push({ key: k, label: t(label), text: `${v > 0 ? '+' : ''}${n}${t(unit)}`, positive: k === 'cost' || k === 'respawnTime' || k === 'respawn_time' || k === 'baseAttackTime' || k === 'base_attack_time' ? v < 0 : v > 0 });
   }
   return out;
 }
@@ -429,10 +418,10 @@ export function skillTags(rec) {
   const passive = rec.skillType === 'PASSIVE' || rec.spType === 'ON_DEPLOY' || rec.spType === 8;
   const spKind = passive ? 'passive' : rec.spType === 'INCREASE_WHEN_ATTACK' ? 'atk' : rec.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'def' : 'time';
   let duration = null;
-  if (rec.durationType === 'AMMO') duration = '弹药';
-  else if (Number(rec.duration) > 0) duration = `${Number(rec.duration)}秒`;
+  if (rec.durationType === 'AMMO') duration = t('弹药');
+  else if (Number(rec.duration) > 0) duration = t('{n}秒', { n: Number(rec.duration) });
   return {
-    sp: SP_TYPE[rec.spType] || (passive ? '被动' : '技力'),
+    sp: t(SP_TYPE[rec.spType]) || (passive ? t('被动') : t('技力')),
     spKind,
     init: passive ? null : Number.isFinite(rec.initSp) ? rec.initSp : 0,
     cost: passive ? null : Number.isFinite(rec.spCost) ? rec.spCost : 0,

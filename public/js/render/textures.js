@@ -11,7 +11,7 @@
 // Everything procedural is deterministic (seeded noise) and generated lazily on first use. Requires
 // globalThis.PIXI and a DOM canvas at call time (never at import time).
 
-import { statusIconKey } from './style.js';
+import { statusIconKey, ORIGINIUM, linearToSrgb255 } from './style.js';
 
 const PIXI = () => globalThis.PIXI;
 
@@ -50,7 +50,7 @@ const PROC_UNIT = 112;
 export const MATERIALS = [
   'road', 'road2', 'road3', 'roadN', 'roadN2', 'floor', 'floor2', 'preview', 'wall', 'wallSide', 'forbid', 'forbid2', 'forbidSide',
   'sep', 'sepSide', 'fence', 'fenceSide', 'start', 'end', 'telin', 'telout', 'hand', 'temp', 'benchSide', 'benchSideTemp', 'mire',
-  'smog', 'deepsea', 'infection', 'cliff', 'blank', 'lowSide', 'margin',
+  'smog', 'deepsea', 'infection', 'infection2', 'cliff', 'blank', 'lowSide', 'margin',
   // high-ground plates by connectivity (horizontal strip L/M/R, vertical strip B(near)/VM/T(far); 'wall' = single)
   'wallL', 'wallM', 'wallR', 'wallB', 'wallVM', 'wallT',
   // textured props
@@ -62,6 +62,11 @@ export const MATERIALS = [
 /** Art layers of materials the crop table (tiles.json) may not describe yet: the board atlas' glass hatch + a glaze. */
 const DEFAULT_ART_LAYERS = Object.freeze({
   penGlass: Object.freeze([Object.freeze({ src: 'D', rect: [549, 1787, 255, 256] }), Object.freeze({ proc: 'glass' })]),
+  // 活性源石 (GitHub #184): the official concrete slab the 3D board lays its crust on (`board3d/atlas.js concrete`), plus
+  // the same crust as a procedural layer — so with the board art installed the 2D tile is composed exactly like the 3D
+  // one, and `MAT_DRAW.infection` is only the no-art fallback.
+  infection: Object.freeze([Object.freeze({ src: 'D', rect: [256, 512, 256, 256] }), Object.freeze({ proc: 'originium' })]),
+  infection2: Object.freeze([Object.freeze({ src: 'D', rect: [256, 512, 256, 256] }), Object.freeze({ proc: 'originium2' })]),
 });
 
 function speckle(ctx, x, y, w, h, r, n, colors, size = [0.6, 1.8]) {
@@ -89,6 +94,97 @@ function bevelTile(ctx, x, y, s, o) {
   ctx.fillStyle = o.lo ?? 'rgba(0,0,0,0.28)';
   ctx.fillRect(x + m, y + s - m - bw, s - 2 * m, bw);
   ctx.fillRect(x + s - m - bw, y + m, bw, s - 2 * m);
+}
+
+/**
+ * Toroidal value noise on an `n × n` grid: `(u, v) ∈ [0, 1)` wraps, so a cell that is repeated over the board joins
+ * itself without a seam (the knobs of 活性源石's crust line up across neighbouring tiles).
+ */
+function noiseField(n, seed) {
+  const r = rng(seed);
+  const g = new Float32Array(n * n);
+  for (let i = 0; i < g.length; i++) g[i] = r();
+  const smooth = (t) => t * t * (3 - 2 * t);
+  return (u, v) => {
+    const x = u * n, y = v * n;
+    const x0 = Math.floor(x), y0 = Math.floor(y);
+    const i0 = ((x0 % n) + n) % n, j0 = ((y0 % n) + n) % n;
+    const i1 = (i0 + 1) % n, j1 = (j0 + 1) % n;
+    const sx = smooth(x - x0), sy = smooth(y - y0);
+    const a = g[j0 * n + i0], b = g[j0 * n + i1], c = g[j1 * n + i0], d = g[j1 * n + i1];
+    return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
+  };
+}
+
+const ORIGINIUM_RES = 256;   // the crust's own resolution (scaled into the atlas cell)
+
+const smoothstep = (a, b, t) => {
+  const k = Math.max(0, Math.min(1, (t - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+};
+
+/**
+ * 活性源石 (infection) — the dark originium crust with thin glowing veins, drawn with the palette and the recipe the 3D
+ * board's shader uses (`render/board3d/materials.js infectionMaterial`, the same octaves and thresholds over its own
+ * world-space noise), so the two boards show ONE material (GitHub #184). Two octaves make the crust mask, the ridge of
+ * the fine octave its veins (brightened where the crust is), the rare top of a third one the crystal grains; the crust
+ * reaches the tile's edges, so a field of 活性源石 carries on into the neighbouring tile instead of ending in a frame.
+ * `mirrored` draws the second variant (`infection2`; `render/tiles.js variantMat` picks between them by tile).
+ */
+const _originiumCells = new Map();
+
+/**
+ * 活性源石's crust, rendered once per variant into `size × size` pixels (cached: the atlas rebuilds on every board art
+ * change, the pattern does not). `mirrored` is the second variant (see `originiumOverlay`).
+ */
+function originiumCanvas(size, mirrored) {
+  const key = `${size}:${mirrored ? 1 : 0}`;
+  const hit = _originiumCells.get(key);
+  if (hit) return hit;
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const crustN = noiseField(16, 9137), fineN = noiseField(32, 4421), grainN = noiseField(64, 733);
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  const base = ORIGINIUM.base, crust = ORIGINIUM.crust, vein = ORIGINIUM.vein, spec = ORIGINIUM.spec;
+  for (let py = 0; py < size; py++) {
+    const v = (py + 0.5) / size;
+    for (let px = 0; px < size; px++) {
+      const u = mirrored ? 1 - (px + 0.5) / size : (px + 0.5) / size;
+      const n1 = crustN(u, v), n2 = fineN(u, v), n3 = grainN(u, v);
+      const crustM = smoothstep(0.38, 0.62, n1 * 0.7 + n2 * 0.45);
+      const ridge = smoothstep(0.86, 0.98, 1 - Math.abs(n2 * 2 - 1)) * (0.35 + 0.65 * crustM);
+      const grain = smoothstep(0.93, 1, n3) * crustM;
+      const alpha = Math.min(1, crustM * 0.72 + ridge);
+      if (alpha <= 0.004 && grain <= 0.01) continue;
+      const i = (py * size + px) * 4;
+      for (let c = 0; c < 3; c++) {
+        const lit = base[c] * (1 - n2) + crust[c] * n2;          // the crust's own shading
+        const vc = lit * (1 - ridge) + vein[c] * ridge;          // …and the vein over it
+        // the mixing happens in the shaders' working (linear) space; the canvas stores sRGB (the 3D board's
+        // colorspace_fragment does the same conversion at the end of its fragment shader)
+        d[i + c] = linearToSrgb255(Math.max(0, Math.min(1, vc * (1 - grain) + spec[c] * grain)));
+      }
+      d[i + 3] = Math.round(alpha * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  _originiumCells.set(key, canvas);
+  return canvas;
+}
+
+/**
+ * 活性源石 (infection) — the dark originium crust with thin glowing veins, drawn with the palette and the recipe the 3D
+ * board's shader uses (`render/board3d/materials.js infectionMaterial`: the same octaves and thresholds over its own
+ * world-space noise), so the two boards show ONE material (GitHub #184: this cell used to be a beveled brick with random
+ * crystal clusters while the 3D quad carried the crust). Two octaves make the crust mask, the ridge of the fine octave
+ * its veins (brightened where the crust is), the rare top of a third one the crystal grains; the crust reaches the
+ * tile's edges, so a field of 活性源石 carries on into the neighbouring tile instead of ending in a frame — the noise
+ * wraps, so a repeated cell joins itself. Drawn through `drawImage`, so the callers' transform (the procedura draw path
+ * scales a 112 px cell up to the atlas cell) applies; `putImageData` would ignore it.
+ */
+function originiumOverlay(ctx, x, y, s, mirrored = false) {
+  ctx.drawImage(originiumCanvas(ORIGINIUM_RES, mirrored), x, y, s, s);
 }
 
 function cracks(ctx, x, y, s, r, n, color) {
@@ -285,23 +381,8 @@ const MAT_DRAW = {
     }
     speckle(ctx, x, y, s, s, r, 60, ['rgba(200,255,255,0.12)']);
   },
-  infection(ctx, x, y, s, r) {
-    bevelTile(ctx, x, y, s, { light: '#3a2a33', dark: '#241a20', seamColor: '#140e11', hi: 'rgba(255,140,90,0.14)' });
-    for (let i = 0; i < 7; i++) {
-      const cx = x + 16 + r() * (s - 32), cy = y + 16 + r() * (s - 32), rr = 5 + r() * 10, a = r() * Math.PI;
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr * 2.2);
-      g.addColorStop(0, 'rgba(255,110,60,0.45)'); g.addColorStop(1, 'rgba(255,110,60,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rr * 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = i % 2 ? '#ff7a45' : '#ffb070';
-      ctx.beginPath();
-      for (let k = 0; k < 5; k++) {
-        const aa = a + (k / 5) * Math.PI * 2, rad = k % 2 ? rr * 0.45 : rr;
-        ctx.lineTo(cx + Math.cos(aa) * rad, cy + Math.sin(aa) * rad);
-      }
-      ctx.closePath(); ctx.fill();
-    }
-    cracks(ctx, x, y, s, r, 4, 'rgba(255,120,70,0.45)');
-  },
+  infection(ctx, x, y, s, r) { floorBase(ctx, x, y, s, r); originiumOverlay(ctx, x, y, s, false); },
+  infection2(ctx, x, y, s, r) { floorBase(ctx, x, y, s, r); originiumOverlay(ctx, x, y, s, true); },
   cliff(ctx, x, y, s) {
     const g = ctx.createLinearGradient(x, y, x, y + s);
     g.addColorStop(0, 'rgba(70,80,86,1)'); g.addColorStop(0.08, 'rgba(38,45,49,1)'); g.addColorStop(1, 'rgba(10,13,14,0)');
@@ -439,6 +520,9 @@ const _atlases = new Map();   // art key → atlas
 
 /** Procedural finishing layers usable in tiles.json (`{ proc: 'rim' }`): a bevelled block edge. */
 const PROC_LAYERS = {
+  /** 活性源石's crust over the official concrete (DEFAULT_ART_LAYERS.infection); the second variant is mirrored. */
+  originium(ctx, x, y, s) { originiumOverlay(ctx, x, y, s, false); },
+  originium2(ctx, x, y, s) { originiumOverlay(ctx, x, y, s, true); },
   /** A glossy glass pane over the inner square of a hatch: sky-lit gradient, soft cloud reflections, a highlight. */
   glass(ctx, x, y, s) {
     const i = s * 0.135, w = s - i * 2;
@@ -605,6 +689,8 @@ const FX_W = 1024, FX_H = 512;
 /** Status icons: one 32 px row at the bottom of the FX atlas (frames `st_<key>`). */
 const STATUS_ROW_Y = 448;
 let _fx = null;
+/** `jpFxTextures()` 的缓存（见该函数说明）。`null` = 还没试过加载。 */
+let _jpFx = null;
 
 /**
  * FX atlas frames — name: [x, y, w, h, draw(ctx, x, y, w, h)]. Every frame owns its cell: no two frames share a pixel
@@ -616,6 +702,52 @@ let _fx = null;
  * bottom).
  */
 const FX_DRAW = {
+  // ── 日服客户端解包出来的**官方特效贴图**的程序化兜底（`jpFxTextures()` 会按同名覆盖）──────
+  // 有了兜底，图还没下载完（或离线跑测试）时不会出现"空白粒子"。
+  // ⚠️ 坐标必须落在 `FX_W × FX_H`（1024×512）之内，而且**互相不能重叠** ——
+  //    这是共享画布，叠了就是互相覆盖（我第一版既越界又叠了两对，靠
+  //    `.workbuddy/tools/probe-fx-atlas-bounds.mjs` 才查出来）。
+  //    实际占用：y 0–320 的 x 0–896 已被既有帧占满；y 320–512 有 x 768–1024 的空条。
+  // 每个名字的用途见 `public/assets/fx/jp/manifest.json`。
+  jpBurst: [768, 320, 128, 128, (c, x, y, w) => {           // 星爆 —— 命中闪光
+    const cx = x + w / 2, cy = y + w / 2;
+    c.strokeStyle = 'rgba(255,255,255,1)'; c.lineWidth = 2;
+    for (let i = 0; i < 12; i += 1) {
+      const a = (i / 12) * Math.PI * 2, r = i % 2 ? w * 0.26 : w * 0.48;
+      c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); c.stroke();
+    }
+    radial(c, cx, cy, w * 0.16, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(255,255,255,0)']]);
+  }],
+  jpHalo: [768, 448, 64, 64, (c, x, y, w) => {              // 径向光晕 —— 底光
+    radial(c, x + w / 2, y + w / 2, w / 2, [[0, 'rgba(255,255,255,0.45)'], [0.45, 'rgba(255,255,255,0.9)'], [1, 'rgba(255,255,255,0)']]);
+  }],
+  jpFlare: [896, 320, 64, 64, (c, x, y, w) => {             // 镜头光带
+    const g = c.createLinearGradient(x, y, x + w, y);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(x + 2, y + w * 0.4, w - 4, w * 0.2);
+  }],
+  jpFlame: [896, 384, 64, 64, (c, x, y, w) => {             // 蓝白火焰须
+    const g = c.createLinearGradient(x, y + w, x, y);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.6, 'rgba(190,225,255,0.85)'); g.addColorStop(1, 'rgba(255,255,255,1)');
+    c.fillStyle = g;
+    c.beginPath(); c.ellipse(x + w / 2, y + w / 2, w * 0.18, w * 0.46, 0, 0, Math.PI * 2); c.fill();
+  }],
+  jpSoftie: [896, 448, 64, 64, (c, x, y, w) => {            // 柔和光斑
+    radial(c, x + w / 2, y + w / 2, w / 2, [[0, 'rgba(255,255,255,0.85)'], [0.55, 'rgba(255,255,255,0.35)'], [1, 'rgba(255,255,255,0)']]);
+  }],
+  jpShard: [960, 320, 64, 64, (c, x, y, w) => {             // 碎片 / 晶簇
+    c.fillStyle = 'rgba(255,255,255,0.92)';
+    const cx = x + w / 2, cy = y + w / 2;
+    c.beginPath(); c.moveTo(cx, y + 4); c.lineTo(cx + w * 0.30, cy); c.lineTo(cx + w * 0.10, y + w - 4);
+    c.lineTo(cx - w * 0.22, cy + w * 0.16); c.lineTo(cx - w * 0.30, cy - w * 0.10); c.closePath(); c.fill();
+  }],
+  jpMoon: [960, 384, 64, 64, (c, x, y, w) => {              // 月相圆盘
+    const cx = x + w / 2, cy = y + w / 2;
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(cx, cy, w * 0.44, 0, Math.PI * 2); c.fill();
+    c.globalCompositeOperation = 'destination-out';
+    c.beginPath(); c.arc(cx + w * 0.18, cy - w * 0.06, w * 0.40, 0, Math.PI * 2); c.fill();
+    c.globalCompositeOperation = 'source-over';
+  }],
   glow: [0, 0, 128, 128, (c, x, y, w) => { radial(c, x + w / 2, y + w / 2, w / 2, [[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']]); }],
   soft: [128, 0, 128, 128, (c, x, y, w) => { radial(c, x + w / 2, y + w / 2, w / 2, [[0, 'rgba(255,255,255,0.8)'], [1, 'rgba(255,255,255,0)']]); }],
   ring: [256, 0, 128, 128, (c, x, y, w) => {
@@ -808,6 +940,44 @@ export function fxFrames() {
   for (const [name, [x, y, w, h]] of Object.entries(FX_DRAW)) frames[name] = [x, y, w, h];
   STATUS_KEYS.forEach((k, i) => { frames['st_' + k] = [(i % 32) * 32, STATUS_ROW_Y + Math.floor(i / 32) * 32, 32, 32]; });
   return { size: [FX_W, FX_H], frames };
+}
+
+/**
+ * **日服客户端解包出来的官方特效贴图**（`public/assets/fx/jp/*.webp` + `manifest.json`）。
+ *
+ * 为什么单独一份而不是并进 `fxAtlas()`：`FX_DRAW` 是**程序化画**在 canvas 上的，
+ * 而这些是**真实位图**（无损 webp、带 alpha），两者只能共存在 `tex` 表里 —— 所以这里
+ * 用 `PIXI.Texture.from(url)` 建**惰性纹理**（v7：立刻返回，图加载完自动补尺寸），
+ * 交给 `fx.js` 在构造时**同步**合并进 `this.tex`。这样有两个好处：
+ *   · 不用把渲染初始化改成 async（`fxAtlas()` 仍是同步的）；
+ *   · 图没到之前，同名的**程序化兜底帧**（`FX_DRAW` 里的 `jpXxx`）照常可用，不会出现空白粒子。
+ *
+ * ⚠️ 一个名字对应**一张独立 baseTexture**（不像程序化图集共用一张 base）——
+ * 所以每个官方粒子是一次独立 draw call。当前只用了 7 张、且只挂在高光时刻，可以接受；
+ * 若将来大规模铺开，应该把它们**打包成一张图集**再走同一个 base。
+ *
+ * @returns {Promise<Record<string, PIXI.Texture>>} `{ jpBurst, jpHalo, … }`，失败时返回 `{}`（静默降级）
+ */
+export async function jpFxTextures() {
+  if (_jpFx) return _jpFx;
+  _jpFx = {};
+  try {
+    const P = PIXI();
+    const url = '/assets/fx/jp/manifest.json';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('manifest ' + res.status);
+    const manifest = await res.json();
+    for (const [name, info] of Object.entries(manifest || {})) {
+      if (!info || typeof info.url !== 'string') continue;
+      // 键名与程序化图集/`fx.js` 的调用处一致：`jp` + 首字母大写
+      const key = 'jp' + name.charAt(0).toUpperCase() + name.slice(1);
+      try { _jpFx[key] = P.Texture.from(info.url); } catch { /* 单张失败不影响其它 */ }
+    }
+  } catch {
+    // 离线 / 图不在（例如跑纯逻辑测试）→ 保持空表，调用方会回落到程序化兜底帧
+    _jpFx = {};
+  }
+  return _jpFx;
 }
 
 /** FX atlas: `{ base, tex: { [name]: PIXI.Texture } }` (all frames share one base texture). */

@@ -1,4 +1,4 @@
-// Binary format sniffing/validation for downloaded assets (PNG, MP3, fonts,
+// Binary format sniffing/validation for downloaded assets (PNG/WebP, MP3, fonts,
 // Spine skel/atlas, JSON). Used to reject truncated or error-page downloads and
 // to decide whether an existing file on disk can be kept (idempotent re-runs).
 
@@ -18,6 +18,52 @@ export function pngSize(buf) {
   const height = b.readUInt32BE(20);
   if (!width || !height) return null;
   return { width, height };
+}
+
+/**
+ * W-1-REAPPLY-2026-10-07：从 WebP 容器读宽高（VP8 有损 / VP8L 无损 / VP8X 扩展 —— WebP 文件只有这三种形态）。
+ * 本工作区的美术资源是 WebP（convert-assets.py 转的），所以凡是能容忍 PNG 的读取都必须也容忍它。
+ * @param {Buffer|Uint8Array} buf
+ * @returns {{width:number,height:number}|null} 不是 WebP 时返回 null
+ */
+export function webpSize(buf) {
+  if (!buf || buf.length < 20) return null;
+  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (b.toString('latin1', 0, 4) !== 'RIFF' || b.toString('latin1', 8, 12) !== 'WEBP') return null;
+  for (let off = 12; off + 8 <= b.length;) {
+    const type = b.toString('latin1', off, off + 4);
+    const len = b.readUInt32LE(off + 4);
+    const d = off + 8;
+    if (d + len > b.length) return null;                     // 截断的 chunk：绝不越界读
+    if (type === 'VP8X') {                                   // 扩展格式：24 位画布尺寸减一，没有帧头
+      if (len < 10) return null;
+      const width = 1 + (b[d + 4] | (b[d + 5] << 8) | (b[d + 6] << 16));
+      const height = 1 + (b[d + 7] | (b[d + 8] << 8) | (b[d + 9] << 16));
+      return width > 1 && height > 1 ? { width, height } : null;
+    }
+    if (type === 'VP8L') {                                   // 无损：签名字节后 14 + 14 位，LSB 在前
+      if (len < 5 || b[d] !== 0x2f) return null;
+      const bits = b.readUInt32LE(d + 1);
+      return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >>> 14) & 0x3fff) };
+    }
+    if (type === 'VP8 ') {                                   // 有损：3 字节帧标签 + 起始码 + 14 位宽高
+      if (len < 10 || b[d + 3] !== 0x9d || b[d + 4] !== 0x01 || b[d + 5] !== 0x2a) return null;
+      const width = (b[d + 6] | (b[d + 7] << 8)) & 0x3fff;
+      const height = (b[d + 8] | (b[d + 9] << 8)) & 0x3fff;
+      return width && height ? { width, height } : null;
+    }
+    off = d + len + (len & 1);                               // RIFF chunk 按偶数字节补齐
+  }
+  return null;
+}
+
+/**
+ * PNG 或 WebP 的像素尺寸（树里两种都有：美术是 WebP，extract.py 与部分工具写 PNG）。
+ * @param {Buffer|Uint8Array} buf
+ * @returns {{width:number,height:number}|null}
+ */
+export function imageSize(buf) {
+  return pngSize(buf) || webpSize(buf);
 }
 
 /**
